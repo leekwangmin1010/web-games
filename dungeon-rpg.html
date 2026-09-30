@@ -1,0 +1,1213 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dungeon RPG</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #0a0a0f;
+            color: #e0e0e0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        h1 {
+            margin: 15px 0 5px;
+            font-size: 2rem;
+            color: #ffd700;
+            text-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
+        }
+
+        .game-container {
+            display: flex;
+            gap: 20px;
+            padding: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .main-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        #gameCanvas {
+            border: 2px solid #333;
+            border-radius: 4px;
+            background: #000;
+            image-rendering: pixelated;
+        }
+
+        .sidebar {
+            width: 280px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .panel {
+            background: #12121a;
+            border: 1px solid #2a2a3a;
+            border-radius: 8px;
+            padding: 12px;
+        }
+
+        .panel h3 {
+            font-size: 0.85rem;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+            border-bottom: 1px solid #2a2a3a;
+            padding-bottom: 5px;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 4px 0;
+            font-size: 0.9rem;
+        }
+
+        .bar-container {
+            flex: 1;
+            height: 14px;
+            background: #1a1a2a;
+            border-radius: 7px;
+            margin-left: 10px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .bar-fill {
+            height: 100%;
+            border-radius: 7px;
+            transition: width 0.3s;
+        }
+
+        .bar-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 0.65rem;
+            font-weight: bold;
+            color: #fff;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+        }
+
+        .hp-bar .bar-fill { background: linear-gradient(90deg, #c0392b, #e74c3c); }
+        .mp-bar .bar-fill { background: linear-gradient(90deg, #2980b9, #3498db); }
+        .exp-bar .bar-fill { background: linear-gradient(90deg, #f39c12, #f1c40f); }
+
+        .equipment-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+        }
+
+        .equip-slot {
+            background: #1a1a2a;
+            border: 1px solid #2a2a3a;
+            border-radius: 4px;
+            padding: 6px;
+            font-size: 0.75rem;
+            text-align: center;
+        }
+
+        .equip-slot .slot-name {
+            color: #666;
+            font-size: 0.65rem;
+        }
+
+        .equip-slot .slot-item {
+            color: #ddd;
+            margin-top: 2px;
+        }
+
+        .inventory-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 4px;
+        }
+
+        .inv-slot {
+            background: #1a1a2a;
+            border: 1px solid #2a2a3a;
+            border-radius: 4px;
+            padding: 4px;
+            font-size: 1.2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .inv-slot:hover {
+            border-color: #ffd700;
+            background: #22223a;
+        }
+
+        .inv-slot .item-count {
+            position: absolute;
+            bottom: 1px;
+            right: 3px;
+            font-size: 0.6rem;
+            color: #ffd700;
+        }
+
+        .message-log {
+            height: 150px;
+            overflow-y: auto;
+            font-size: 0.8rem;
+            line-height: 1.5;
+        }
+
+        .message-log::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .message-log::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 2px;
+        }
+
+        .msg { padding: 1px 0; }
+        .msg-combat { color: #e74c3c; }
+        .msg-loot { color: #f1c40f; }
+        .msg-info { color: #3498db; }
+        .msg-level { color: #2ecc71; font-weight: bold; }
+        .msg-death { color: #e74c3c; font-weight: bold; }
+        .msg-heal { color: #2ecc71; }
+
+        .dungeon-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.9rem;
+        }
+
+        .floor-badge {
+            background: #1a1a2a;
+            border: 1px solid #ffd700;
+            color: #ffd700;
+            padding: 3px 12px;
+            border-radius: 12px;
+            font-weight: bold;
+        }
+
+        .controls-hint {
+            margin-top: 10px;
+            font-size: 0.75rem;
+            color: #555;
+            text-align: center;
+        }
+
+        kbd {
+            background: #1a1a2a;
+            border: 1px solid #333;
+            border-radius: 3px;
+            padding: 1px 5px;
+            font-size: 0.7rem;
+            font-family: monospace;
+        }
+
+        .game-over-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+
+        .game-over-overlay.show {
+            display: flex;
+        }
+
+        .game-over-text {
+            font-size: 3.5rem;
+            font-weight: bold;
+            color: #e74c3c;
+            text-shadow: 0 0 30px rgba(231, 76, 60, 0.5);
+            margin-bottom: 10px;
+        }
+
+        .game-over-stats {
+            color: #888;
+            font-size: 1.1rem;
+            margin-bottom: 30px;
+            text-align: center;
+            line-height: 1.8;
+        }
+
+        .restart-btn {
+            padding: 15px 40px;
+            font-size: 1.2rem;
+            background: #e74c3c;
+            border: none;
+            color: #fff;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .restart-btn:hover {
+            transform: scale(1.05);
+        }
+
+        .minimap-container {
+            position: relative;
+        }
+
+        #minimapCanvas {
+            background: #0a0a0f;
+            border-radius: 4px;
+            image-rendering: pixelated;
+        }
+
+        .damage-flash {
+            animation: flash 0.15s;
+        }
+
+        @keyframes flash {
+            0%, 100% { filter: brightness(1); }
+            50% { filter: brightness(3) hue-rotate(-30deg); }
+        }
+
+        .tooltip {
+            position: fixed;
+            background: #1a1a2a;
+            border: 1px solid #ffd700;
+            border-radius: 6px;
+            padding: 8px 12px;
+            font-size: 0.8rem;
+            pointer-events: none;
+            z-index: 200;
+            display: none;
+            max-width: 200px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
+
+        .tooltip .tt-name {
+            color: #ffd700;
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+
+        .tooltip .tt-desc {
+            color: #aaa;
+            font-size: 0.75rem;
+        }
+    </style>
+</head>
+<body>
+    <h1>⚔️ Dungeon RPG</h1>
+
+    <div class="game-container">
+        <div class="main-area">
+            <canvas id="gameCanvas" width="640" height="640"></canvas>
+            <div class="controls-hint">
+                <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> 또는 <kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd> 이동 &nbsp;|&nbsp;
+                <kbd>Space</kbd> 공격 &nbsp;|&kbd>&nbsp; <kbd>1</kbd>-<kbd>4</kbd> 아이템 사용
+            </div>
+        </div>
+
+        <div class="sidebar">
+            <div class="panel">
+                <div class="dungeon-info">
+                    <span>🏰 던전</span>
+                    <span class="floor-badge" id="floorDisplay">B1F</span>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h3>📊 스탯</h3>
+                <div class="stat-row">
+                    <span>❤️ HP</span>
+                    <div class="bar-container hp-bar">
+                        <div class="bar-fill" id="hpBar" style="width: 100%"></div>
+                        <span class="bar-text" id="hpText">100/100</span>
+                    </div>
+                </div>
+                <div class="stat-row">
+                    <span>💎 MP</span>
+                    <div class="bar-container mp-bar">
+                        <div class="bar-fill" id="mpBar" style="width: 100%"></div>
+                        <span class="bar-text" id="mpText">50/50</span>
+                    </div>
+                </div>
+                <div class="stat-row">
+                    <span>⭐ EXP</span>
+                    <div class="bar-container exp-bar">
+                        <div class="bar-fill" id="expBar" style="width: 0%"></div>
+                        <span class="bar-text" id="expText">0/100</span>
+                    </div>
+                </div>
+                <div class="stat-row" style="margin-top: 6px;">
+                    <span>🎚️ 레벨</span>
+                    <span id="levelDisplay" style="color: #ffd700; font-weight: bold;">1</span>
+                </div>
+                <div class="stat-row">
+                    <span>⚔️ 공격력</span>
+                    <span id="atkDisplay">10</span>
+                </div>
+                <div class="stat-row">
+                    <span>🛡️ 방어력</span>
+                    <span id="defDisplay">5</span>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h3>🗡️ 장비</h3>
+                <div class="equipment-grid">
+                    <div class="equip-slot">
+                        <div class="slot-name">무기</div>
+                        <div class="slot-item" id="weaponSlot">🗡️ 검</div>
+                    </div>
+                    <div class="equip-slot">
+                        <div class="slot-name">방어구</div>
+                        <div class="slot-item" id="armorSlot">👕 옷</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h3>🎒 인벤토리</h3>
+                <div class="inventory-grid" id="inventoryGrid"></div>
+            </div>
+
+            <div class="panel minimap-container">
+                <h3>🗺️ 미니맵</h3>
+                <canvas id="minimapCanvas" width="256" height="256"></canvas>
+            </div>
+
+            <div class="panel">
+                <h3>📜 로그</h3>
+                <div class="message-log" id="messageLog"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="game-over-overlay" id="gameOverOverlay">
+        <div class="game-over-text">💀 사망</div>
+        <div class="game-over-stats" id="gameOverStats"></div>
+        <button class="restart-btn" onclick="restartGame()">다시 시작</button>
+    </div>
+
+    <div class="tooltip" id="tooltip"></div>
+
+    <script>
+        // ==================== CONFIG ====================
+        const TILE_SIZE = 32;
+        const MAP_WIDTH = 20;
+        const MAP_HEIGHT = 20;
+        const CANVAS_WIDTH = MAP_WIDTH * TILE_SIZE;
+        const CANVAS_HEIGHT = MAP_HEIGHT * TILE_SIZE;
+
+        // ==================== GAME STATE ====================
+        let player, dungeon, enemies, items, particles, messages;
+        let currentFloor = 1;
+        let gameOver = false;
+        let turnCount = 0;
+        let exploredTiles = new Set();
+
+        // ==================== TILE TYPES ====================
+        const TILE = {
+            WALL: 0,
+            FLOOR: 1,
+            STAIRS_DOWN: 2,
+            DOOR: 3
+        };
+
+        // ==================== ITEM DEFINITIONS ====================
+        const ITEM_DEFS = {
+            health_potion: { name: '체력 물약', icon: '🧪', type: 'consumable', effect: 'heal', value: 40, desc: 'HP를 40 회복' },
+            mana_potion: { name: '마나 물약', icon: '💧', type: 'consumable', effect: 'mana', value: 30, desc: 'MP를 30 회복' },
+            big_health_potion: { name: '고급 체력 물약', icon: '⚗️', type: 'consumable', effect: 'heal', value: 100, desc: 'HP를 100 회복' },
+            sword_iron: { name: '철검', icon: '⚔️', type: 'weapon', atk: 5, desc: '공격력 +5' },
+            sword_steel: { name: '강철검', icon: '🗡️', type: 'weapon', atk: 10, desc: '공격력 +10' },
+            sword_flame: { name: '화염검', icon: '🔥', type: 'weapon', atk: 18, desc: '공격력 +18' },
+            armor_leather: { name: '가죽 갑옷', icon: '🥋', type: 'armor', def: 3, desc: '방어력 +3' },
+            armor_chain: { name: '사슬 갑옷', icon: '🛡️', type: 'armor', def: 7, desc: '방어력 +7' },
+            armor_plate: { name: '판금 갑옷', icon: '⚜️', type: 'armor', def: 12, desc: '방어력 +12' },
+            scroll_fire: { name: '화염 스크롤', icon: '📜', type: 'consumable', effect: 'fireball', value: 30, desc: '주변 적에게 30 피해' },
+            scroll_teleport: { name: '순간이동 스크롤', icon: '🌀', type: 'consumable', effect: 'teleport', value: 0, desc: '랜덤 위치로 이동' }
+        };
+
+        // ==================== ENEMY DEFINITIONS ====================
+        const ENEMY_DEFS = {
+            rat: { name: '쥐', icon: '🐀', hp: 20, atk: 4, def: 0, exp: 10, ai: 'chase' },
+            bat: { name: '박쥐', icon: '🦇', hp: 15, atk: 6, def: 0, exp: 12, ai: 'erratic' },
+            goblin: { name: '고블린', icon: '👺', hp: 35, atk: 8, def: 2, exp: 25, ai: 'chase' },
+            skeleton: { name: '해골', icon: '💀', hp: 50, atk: 12, def: 4, exp: 40, ai: 'chase' },
+            orc: { name: '오크', icon: '👹', hp: 80, atk: 16, def: 6, exp: 60, ai: 'chase' },
+            wraith: { name: '망령', icon: '👻', hp: 60, atk: 20, def: 3, exp: 80, ai: 'erratic' },
+            demon: { name: '악마', icon: '😈', hp: 120, atk: 25, def: 10, exp: 120, ai: 'chase' },
+            dragon: { name: '드래곤', icon: '🐉', hp: 200, atk: 35, def: 15, exp: 300, ai: 'chase' }
+        };
+
+        // ==================== CANVAS SETUP ====================
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const minimapCanvas = document.getElementById('minimapCanvas');
+        const minimapCtx = minimapCanvas.getContext('2d');
+
+        // ==================== PLAYER ====================
+        function createPlayer() {
+            return {
+                x: 0, y: 0,
+                hp: 100, maxHp: 100,
+                mp: 50, maxMp: 50,
+                level: 1, exp: 0, expToNext: 100,
+                baseAtk: 10, baseDef: 5,
+                weapon: null, armor: null,
+                inventory: [],
+                potionsUsed: 0
+            };
+        }
+
+        function getPlayerAtk() {
+            return player.baseAtk + (player.weapon ? ITEM_DEFS[player.weapon].atk : 0);
+        }
+
+        function getPlayerDef() {
+            return player.baseDef + (player.armor ? ITEM_DEFS[player.armor].def : 0);
+        }
+
+        // ==================== DUNGEON GENERATION ====================
+        function generateDungeon(floor) {
+            const map = Array(MAP_HEIGHT).fill(null).map(() => Array(MAP_WIDTH).fill(TILE.WALL));
+            const rooms = [];
+            const numRooms = 6 + Math.min(floor, 4);
+
+            // Generate rooms
+            for (let i = 0; i < numRooms; i++) {
+                const w = 4 + Math.floor(Math.random() * 5);
+                const h = 4 + Math.floor(Math.random() * 5);
+                const x = 1 + Math.floor(Math.random() * (MAP_WIDTH - w - 2));
+                const y = 1 + Math.floor(Math.random() * (MAP_HEIGHT - h - 2));
+
+                let overlaps = false;
+                for (const room of rooms) {
+                    if (x < room.x + room.w + 1 && x + w + 1 > room.x &&
+                        y < room.y + room.h + 1 && y + h + 1 > room.y) {
+                        overlaps = true;
+                        break;
+                    }
+                }
+
+                if (!overlaps) {
+                    rooms.push({ x, y, w, h, cx: Math.floor(x + w / 2), cy: Math.floor(y + h / 2) });
+                    for (let ry = y; ry < y + h; ry++) {
+                        for (let rx = x; rx < x + w; rx++) {
+                            map[ry][rx] = TILE.FLOOR;
+                        }
+                    }
+                }
+            }
+
+            // Connect rooms with corridors
+            for (let i = 1; i < rooms.length; i++) {
+                const prev = rooms[i - 1];
+                const curr = rooms[i];
+                let x = prev.cx, y = prev.cy;
+
+                if (Math.random() < 0.5) {
+                    while (x !== curr.cx) {
+                        map[y][x] = TILE.FLOOR;
+                        x += x < curr.cx ? 1 : -1;
+                    }
+                    while (y !== curr.cy) {
+                        map[y][x] = TILE.FLOOR;
+                        y += y < curr.cy ? 1 : -1;
+                    }
+                } else {
+                    while (y !== curr.cy) {
+                        map[y][x] = TILE.FLOOR;
+                        y += y < curr.cy ? 1 : -1;
+                    }
+                    while (x !== curr.cx) {
+                        map[y][x] = TILE.FLOOR;
+                        x += x < curr.cx ? 1 : -1;
+                    }
+                }
+                map[y][x] = TILE.FLOOR;
+            }
+
+            // Place stairs in last room
+            const lastRoom = rooms[rooms.length - 1];
+            map[lastRoom.cy][lastRoom.cx] = TILE.STAIRS_DOWN;
+
+            return { map, rooms };
+        }
+
+        // ==================== ENEMY SPAWNING ====================
+        function getEnemyTypesForFloor(floor) {
+            const types = ['rat', 'bat'];
+            if (floor >= 2) types.push('goblin');
+            if (floor >= 3) types.push('skeleton');
+            if (floor >= 4) types.push('orc');
+            if (floor >= 5) types.push('wraith');
+            if (floor >= 6) types.push('demon');
+            if (floor >= 8) types.push('dragon');
+            return types;
+        }
+
+        function spawnEnemies(dungeon, floor) {
+            const enemyList = [];
+            const types = getEnemyTypesForFloor(floor);
+            const numEnemies = 5 + floor * 2;
+
+            for (let i = 0; i < numEnemies; i++) {
+                const type = types[Math.floor(Math.random() * types.length)];
+                const def = ENEMY_DEFS[type];
+                const pos = getRandomFloorPosition(dungeon, enemyList);
+                if (pos) {
+                    const hpMultiplier = 1 + (floor - 1) * 0.15;
+                    enemyList.push({
+                        type,
+                        x: pos.x, y: pos.y,
+                        hp: Math.floor(def.hp * hpMultiplier),
+                        maxHp: Math.floor(def.hp * hpMultiplier),
+                        atk: Math.floor(def.atk * (1 + (floor - 1) * 0.1)),
+                        def: def.def,
+                        exp: Math.floor(def.exp * (1 + (floor - 1) * 0.2)),
+                        ai: def.ai
+                    });
+                }
+            }
+            return enemyList;
+        }
+
+        function spawnItems(dungeon, floor) {
+            const itemList = [];
+            const numItems = 3 + Math.floor(Math.random() * 3);
+
+            for (let i = 0; i < numItems; i++) {
+                const pos = getRandomFloorPosition(dungeon, itemList);
+                if (pos) {
+                    const itemType = getRandomItemType(floor);
+                    itemList.push({ x: pos.x, y: pos.y, type: itemType });
+                }
+            }
+            return itemList;
+        }
+
+        function getRandomItemType(floor) {
+            const items = ['health_potion', 'mana_potion'];
+            if (Math.random() < 0.3) items.push('big_health_potion');
+            if (floor >= 2 && Math.random() < 0.2) items.push('scroll_fire');
+            if (Math.random() < 0.15) items.push('scroll_teleport');
+            if (floor >= 2 && Math.random() < 0.15) items.push('sword_iron');
+            if (floor >= 3 && Math.random() < 0.1) items.push('sword_steel');
+            if (floor >= 5 && Math.random() < 0.05) items.push('sword_flame');
+            if (floor >= 2 && Math.random() < 0.15) items.push('armor_leather');
+            if (floor >= 3 && Math.random() < 0.1) items.push('armor_chain');
+            if (floor >= 5 && Math.random() < 0.05) items.push('armor_plate');
+            return items[Math.floor(Math.random() * items.length)];
+        }
+
+        function getRandomFloorPosition(dungeon, existing) {
+            for (let attempts = 0; attempts < 50; attempts++) {
+                const x = 1 + Math.floor(Math.random() * (MAP_WIDTH - 2));
+                const y = 1 + Math.floor(Math.random() * (MAP_HEIGHT - 2));
+                if (dungeon.map[y][x] === TILE.FLOOR) {
+                    const occupied = existing.some(e => e.x === x && e.y === y);
+                    if (!occupied) return { x, y };
+                }
+            }
+            return null;
+        }
+
+        // ==================== FOV (Field of View) ====================
+        function computeFOV() {
+            exploredTiles.clear();
+            const radius = 8;
+            for (let angle = 0; angle < 360; angle += 1) {
+                const rad = angle * Math.PI / 180;
+                const dx = Math.cos(rad);
+                const dy = Math.sin(rad);
+                let x = player.x + 0.5;
+                let y = player.y + 0.5;
+
+                for (let i = 0; i < radius; i++) {
+                    const tx = Math.floor(x);
+                    const ty = Math.floor(y);
+                    if (tx < 0 || tx >= MAP_WIDTH || ty < 0 || ty >= MAP_HEIGHT) break;
+                    exploredTiles.add(`${tx},${ty}`);
+                    if (dungeon.map[ty][tx] === TILE.WALL) break;
+                    x += dx;
+                    y += dy;
+                }
+            }
+        }
+
+        // ==================== COMBAT ====================
+        function playerAttack(enemy) {
+            const atk = getPlayerAtk();
+            const dmg = Math.max(1, atk - enemy.def + Math.floor(Math.random() * 5) - 2);
+            enemy.hp -= dmg;
+            addMessage(`⚔️ ${ENEMY_DEFS[enemy.type].name}에게 ${dmg} 피해!`, 'msg-combat');
+            spawnParticles(enemy.x, enemy.y, '#e74c3c', 5);
+
+            if (enemy.hp <= 0) {
+                addMessage(`💀 ${ENEMY_DEFS[enemy.type].name} 처치! +${enemy.exp} EXP`, 'msg-level');
+                gainExp(enemy.exp);
+                enemies = enemies.filter(e => e !== enemy);
+                // Drop loot
+                if (Math.random() < 0.3) {
+                    const itemType = Math.random() < 0.6 ? 'health_potion' : (Math.random() < 0.5 ? 'mana_potion' : getRandomItemType(currentFloor));
+                    items.push({ x: enemy.x, y: enemy.y, type: itemType });
+                    addMessage(`✨ ${ENEMY_DEFS[enemy.type].name}이(가) 아이템을 떨어뜨렸다!`, 'msg-loot');
+                }
+            }
+        }
+
+        function enemyAttack(enemy) {
+            const def = getPlayerDef();
+            const dmg = Math.max(1, enemy.atk - def + Math.floor(Math.random() * 4) - 2);
+            player.hp -= dmg;
+            addMessage(`💥 ${ENEMY_DEFS[enemy.type].name}의 공격! ${dmg} 피해!`, 'msg-death');
+            spawnParticles(player.x, player.y, '#e74c3c', 8);
+            canvas.classList.add('damage-flash');
+            setTimeout(() => canvas.classList.remove('damage-flash'), 150);
+
+            if (player.hp <= 0) {
+                player.hp = 0;
+                gameOver = true;
+                showGameOver();
+            }
+        }
+
+        function gainExp(amount) {
+            player.exp += amount;
+            while (player.exp >= player.expToNext) {
+                player.exp -= player.expToNext;
+                player.level++;
+                player.expToNext = Math.floor(player.expToNext * 1.5);
+                player.maxHp += 15;
+                player.maxMp += 8;
+                player.baseAtk += 3;
+                player.baseDef += 2;
+                player.hp = player.maxHp;
+                player.mp = player.maxMp;
+                addMessage(`🎉 레벨 업! Lv.${player.level}`, 'level');
+                spawnParticles(player.x, player.y, '#f1c40f', 20);
+            }
+        }
+
+        // ==================== ENEMY AI ====================
+        function moveEnemies() {
+            for (const enemy of enemies) {
+                const dist = Math.abs(enemy.x - player.x) + Math.abs(enemy.y - player.y);
+
+                // Only act if within range
+                if (dist > 10) continue;
+
+                // Check if adjacent to player
+                if (dist === 1) {
+                    enemyAttack(enemy);
+                    continue;
+                }
+
+                let dx = 0, dy = 0;
+
+                if (enemy.ai === 'chase') {
+                    dx = Math.sign(player.x - enemy.x);
+                    dy = Math.sign(player.y - enemy.y);
+                    // Move in the direction with greater distance
+                    if (Math.abs(player.x - enemy.x) > Math.abs(player.y - enemy.y)) {
+                        dy = 0;
+                    } else {
+                        dx = 0;
+                    }
+                } else if (enemy.ai === 'erratic') {
+                    const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+                    const dir = dirs[Math.floor(Math.random() * dirs.length)];
+                    dx = dir[0];
+                    dy = dir[1];
+                }
+
+                const newX = enemy.x + dx;
+                const newY = enemy.y + dy;
+
+                // Check if can move
+                if (newX >= 0 && newX < MAP_WIDTH && newY >= 0 && newY < MAP_HEIGHT &&
+                    dungeon.map[newY][newX] !== TILE.WALL &&
+                    !(newX === player.x && newY === player.y) &&
+                    !enemies.some(e => e !== enemy && e.x === newX && e.y === newY)) {
+                    enemy.x = newX;
+                    enemy.y = newY;
+                }
+            }
+        }
+
+        // ==================== PARTICLES ====================
+        function spawnParticles(x, y, color, count) {
+            for (let i = 0; i < count; i++) {
+                particles.push({
+                    x: (x + 0.5) * TILE_SIZE,
+                    y: (y + 0.5) * TILE_SIZE,
+                    dx: (Math.random() - 0.5) * 4,
+                    dy: (Math.random() - 0.5) * 4,
+                    life: 1,
+                    color,
+                    size: 2 + Math.random() * 3
+                });
+            }
+        }
+
+        function updateParticles() {
+            for (const p of particles) {
+                p.x += p.dx;
+                p.y += p.dy;
+                p.life -= 0.03;
+                p.size *= 0.95;
+            }
+            particles = particles.filter(p => p.life > 0);
+        }
+
+        // ==================== MESSAGES ====================
+        function addMessage(text, cls = 'msg') {
+            const log = document.getElementById('messageLog');
+            const div = document.createElement('div');
+            div.className = `msg ${cls}`;
+            div.textContent = text;
+            log.appendChild(div);
+            log.scrollTop = log.scrollHeight;
+            // Keep only last 50 messages
+            while (log.children.length > 50) {
+                log.removeChild(log.firstChild);
+            }
+        }
+
+        // ==================== RENDERING ====================
+        function draw() {
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+            // Draw tiles
+            for (let y = 0; y < MAP_HEIGHT; y++) {
+                for (let x = 0; x < MAP_WIDTH; x++) {
+                    if (!exploredTiles.has(`${x},${y}`)) continue;
+
+                    const tile = dungeon.map[y][x];
+                    const px = x * TILE_SIZE;
+                    const py = y * TILE_SIZE;
+
+                    if (tile === TILE.WALL) {
+                        ctx.fillStyle = '#1a1a2e';
+                        ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+                        ctx.fillStyle = '#151525';
+                        ctx.fillRect(px + 2, py + 2, TILE_SIZE - 4, TILE_SIZE - 4);
+                    } else {
+                        ctx.fillStyle = '#0d0d15';
+                        ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+                        // Floor detail
+                        ctx.fillStyle = '#111118';
+                        ctx.fillRect(px + 1, py + 1, TILE_SIZE - 2, TILE_SIZE - 2);
+
+                        if (tile === TILE.STAIRS_DOWN) {
+                            ctx.fillStyle = '#ffd700';
+                            ctx.font = '20px serif';
+                            ctx.textAlign = 'center';
+                            ctx.textBaseline = 'middle';
+                            ctx.fillText('⬇️', px + TILE_SIZE / 2, py + TILE_SIZE / 2);
+                        }
+                    }
+                }
+            }
+
+            // Draw items
+            for (const item of items) {
+                if (!exploredTiles.has(`${item.x},${item.y}`)) continue;
+                const def = ITEM_DEFS[item.type];
+                ctx.font = '20px serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(def.icon, (item.x + 0.5) * TILE_SIZE, (item.y + 0.5) * TILE_SIZE);
+            }
+
+            // Draw enemies
+            for (const enemy of enemies) {
+                if (!exploredTiles.has(`${enemy.x},${enemy.y}`)) continue;
+                const def = ENEMY_DEFS[enemy.type];
+                const px = (enemy.x + 0.5) * TILE_SIZE;
+                const py = (enemy.y + 0.5) * TILE_SIZE;
+
+                // Shadow
+                ctx.fillStyle = 'rgba(0,0,0,0.3)';
+                ctx.beginPath();
+                ctx.ellipse(px, py + 10, 10, 4, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.font = '22px serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(def.icon, px, py);
+
+                // HP bar
+                if (enemy.hp < enemy.maxHp) {
+                    const barW = 24;
+                    const barH = 3;
+                    const barX = px - barW / 2;
+                    const barY = py - 16;
+                    ctx.fillStyle = '#333';
+                    ctx.fillRect(barX, barY, barW, barH);
+                    ctx.fillStyle = '#e74c3c';
+                    ctx.fillRect(barX, barY, barW * (enemy.hp / enemy.maxHp), barH);
+                }
+            }
+
+            // Draw player
+            const ppx = (player.x + 0.5) * TILE_SIZE;
+            const ppy = (player.y + 0.5) * TILE_SIZE;
+
+            // Player glow
+            const gradient = ctx.createRadialGradient(ppx, ppy, 0, ppx, ppy, 20);
+            gradient.addColorStop(0, 'rgba(255, 215, 0, 0.3)');
+            gradient.addColorStop(1, 'rgba(255, 215, 0, 0)');
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(ppx, ppy, 20, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Shadow
+            ctx.fillStyle = 'rgba(0,0,0,0.3)';
+            ctx.beginPath();
+            ctx.ellipse(ppx, ppy + 10, 10, 4, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.font = '24px serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('🧙', ppx, ppy);
+
+            // Draw particles
+            for (const p of particles) {
+                ctx.globalAlpha = p.life;
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.globalAlpha = 1;
+
+            // Fog of war overlay
+            for (let y = 0; y < MAP_HEIGHT; y++) {
+                for (let x = 0; x < MAP_WIDTH; x++) {
+                    if (!exploredTiles.has(`${x},${y}`)) {
+                        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                        ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                    }
+                }
+            }
+        }
+
+        function drawMinimap() {
+            const scale = minimapCanvas.width / MAP_WIDTH;
+            minimapCtx.fillStyle = '#0a0a0f';
+            minimapCtx.fillRect(0, 0, minimapCanvas.width, minimapCanvas.height);
+
+            for (let y = 0; y < MAP_HEIGHT; y++) {
+                for (let x = 0; x < MAP_WIDTH; x++) {
+                    if (!exploredTiles.has(`${x},${y}`)) continue;
+                    const tile = dungeon.map[y][x];
+                    if (tile === TILE.WALL) {
+                        minimapCtx.fillStyle = '#1a1a2e';
+                    } else if (tile === TILE.STAIRS_DOWN) {
+                        minimapCtx.fillStyle = '#ffd700';
+                    } else {
+                        minimapCtx.fillStyle = '#2a2a3a';
+                    }
+                    minimapCtx.fillRect(x * scale, y * scale, scale, scale);
+                }
+            }
+
+            // Player on minimap
+            minimapCtx.fillStyle = '#ffd700';
+            minimapCtx.fillRect(player.x * scale - 1, player.y * scale - 1, scale + 2, scale + 2);
+
+            // Enemies on minimap
+            minimapCtx.fillStyle = '#e74c3c';
+            for (const enemy of enemies) {
+                if (exploredTiles.has(`${enemy.x},${enemy.y}`)) {
+                    minimapCtx.fillRect(enemy.x * scale, enemy.y * scale, scale, scale);
+                }
+            }
+        }
+
+        // ==================== UI UPDATE ====================
+        function updateUI() {
+            // HP
+            const hpPct = (player.hp / player.maxHp) * 100;
+            document.getElementById('hpBar').style.width = `${hpPct}%`;
+            document.getElementById('hpText').textContent = `${player.hp}/${player.maxHp}`;
+
+            // MP
+            const mpPct = (player.mp / player.maxMp) * 100;
+            document.getElementById('mpBar').style.width = `${mpPct}%`;
+            document.getElementById('mpText').textContent = `${player.mp}/${player.maxMp}`;
+
+            // EXP
+            const expPct = (player.exp / player.expToNext) * 100;
+            document.getElementById('expBar').style.width = `${expPct}%`;
+            document.getElementById('expText').textContent = `${player.exp}/${player.expToNext}`;
+
+            // Stats
+            document.getElementById('levelDisplay').textContent = player.level;
+            document.getElementById('atkDisplay').textContent = getPlayerAtk();
+            document.getElementById('defDisplay').textContent = getPlayerDef();
+
+            // Equipment
+            document.getElementById('weaponSlot').textContent = player.weapon ? ITEM_DEFS[player.weapon].icon + ' ' + ITEM_DEFS[player.weapon].name : '🗡️ 맨손';
+            document.getElementById('armorSlot').textContent = player.armor ? ITEM_DEFS[player.armor].icon + ' ' + ITEM_DEFS[player.armor].name : '👕 옷';
+
+            // Floor
+            document.getElementById('floorDisplay').textContent = `B${currentFloor}F`;
+
+            // Inventory
+            const invGrid = document.getElementById('inventoryGrid');
+            invGrid.innerHTML = '';
+            for (let i = 0; i < 8; i++) {
+                const slot = document.createElement('div');
+                slot.className = 'inv-slot';
+                if (player.inventory[i]) {
+                    const def = ITEM_DEFS[player.inventory[i].type];
+                    slot.innerHTML = `${def.icon}<span class="item-count">${player.inventory[i].count > 1 ? player.inventory[i].count : ''}</span>`;
+                    slot.dataset.index = i;
+                    slot.onmouseenter = (e) => showTooltip(e, def);
+                    slot.onmouseleave = hideTooltip;
+                    slot.onclick = () => useItem(i);
+                }
+                invGrid.appendChild(slot);
+            }
+        }
+
+        function showTooltip(e, def) {
+            const tt = document.getElementById('tooltip');
+            tt.innerHTML = `<div class="tt-name">${def.icon} ${def.name}</div><div class="tt-desc">${def.desc}</div>`;
+            tt.style.display = 'block';
+            tt.style.left = `${e.clientX + 15}px`;
+            tt.style.top = `${e.clientY + 15}px`;
+        }
+
+        function hideTooltip() {
+            document.getElementById('tooltip').style.display = 'none';
+        }
+
+        // ==================== ITEM USAGE ====================
+        function useItem(index) {
+            if (gameOver || index >= player.inventory.length) return;
+            const invItem = player.inventory[index];
+            const def = ITEM_DEFS[invItem.type];
+
+            if (def.type === 'consumable') {
+                if (def.effect === 'heal') {
+                    player.hp = Math.min(player.maxHp, player.hp + def.value);
+                    addMessage(`🧪 ${def.name} 사용! HP +${def.value}`, 'msg-heal');
+                } else if (def.effect === 'mana') {
+                    player.mp = Math.min(player.maxMp, player.mp + def.value);
+                    addMessage(`💧 ${def.name} 사용! MP +${def.value}`, 'msg-heal');
+                } else if (def.effect === 'fireball') {
+                    addMessage(`🔥 화염 스크롤 사용!`, 'msg-combat');
+                    for (const enemy of [...enemies]) {
+                        const dist = Math.abs(enemy.x - player.x) + Math.abs(enemy.y - player.y);
+                        if (dist <= 5) {
+                            enemy.hp -= def.value;
+                            spawnParticles(enemy.x, enemy.y, '#e67e22', 10);
+                            if (enemy.hp <= 0) {
+                                addMessage(`💀 ${ENEMY_DEFS[enemy.type].name} 처치!`, 'msg-level');
+                                gainExp(enemy.exp);
+                                enemies = enemies.filter(e => e !== enemy);
+                            }
+                        }
+                    }
+                } else if (def.effect === 'teleport') {
+                    const pos = getRandomFloorPosition(dungeon, enemies);
+                    if (pos) {
+                        player.x = pos.x;
+                        player.y = pos.y;
+                        addMessage(`🌀 순간이동!`, 'msg-info');
+                    }
+                }
+                invItem.count--;
+                if (invItem.count <= 0) {
+                    player.inventory.splice(index, 1);
+                }
+            } else if (def.type === 'weapon') {
+                if (player.weapon) {
+                    player.inventory.push({ type: player.weapon, count: 1 });
+                }
+                player.weapon = invItem.type;
+                player.inventory.splice(index, 1);
+                addMessage(`⚔️ ${def.name} 장착!`, 'msg-info');
+            } else if (def.type === 'armor') {
+                if (player.armor) {
+                    player.inventory.push({ type: player.armor, count: 1 });
+                }
+                player.armor = invItem.type;
+                player.inventory.splice(index, 1);
+                addMessage(`🛡️ ${def.name} 장착!`, 'msg-info');
+            }
+
+            updateUI();
+        }
+
+        // ==================== MOVEMENT ====================
+        function tryMove(dx, dy) {
+            if (gameOver) return;
+
+            const newX = player.x + dx;
+            const newY = player.y + dy;
+
+            // Check bounds
+            if (newX < 0 || newX >= MAP_WIDTH || newY < 0 || newY >= MAP_HEIGHT) return;
+
+            // Check wall
+            if (dungeon.map[newY][newX] === TILE.WALL) return;
+
+            // Check enemy
+            const enemy = enemies.find(e => e.x === newX && e.y === newY);
+            if (enemy) {
+                playerAttack(enemy);
+                moveEnemies();
+                computeFOV();
+                updateUI();
+                draw();
+                drawMinimap();
+                return;
+            }
+
+            // Move player
+            player.x = newX;
+            player.y = newY;
+
+            // Check item pickup
+            const itemIndex = items.findIndex(i => i.x === newX && i.y === newY);
+            if (itemIndex !== -1) {
+                const item = items[itemIndex];
+                const def = ITEM_DEFS[item.type];
+                addMessage(`✨ ${def.icon} ${def.name} 획득!`, 'msg-loot');
+
+                if (def.type === 'consumable') {
+                    const existing = player.inventory.find(i => i.type === item.type);
+                    if (existing) {
+                        existing.count++;
+                    } else {
+                        player.inventory.push({ type: item.type, count: 1 });
+                    }
+                } else {
+                    player.inventory.push({ type: item.type, count: 1 });
+                }
+                items.splice(itemIndex, 1);
+            }
+
+            // Check stairs
+            if (dungeon.map[newY][newX] === TILE.STAIRS_DOWN) {
+                addMessage(`⬇️ 다음 층으로 내려갑니다...`, 'msg-info');
+                currentFloor++;
+                initFloor();
+            }
+
+            // Enemy turn
+            moveEnemies();
+
+            // MP regen
+            if (turnCount % 3 === 0) {
+                player.mp = Math.min(player.maxMp, player.mp + 1);
+            }
+
+            turnCount++;
+            computeFOV();
+            updateUI();
+            draw();
+            drawMinimap();
+        }
+
+        // ==================== GAME INIT ====================
+        function initFloor() {
+            dungeon = generateDungeon(currentFloor);
+            enemies = spawnEnemies(dungeon, currentFloor);
+            items = spawnItems(dungeon, currentFloor);
+            particles = [];
+
+            // Place player in first room
+            const firstRoom = dungeon.rooms[0];
+            player.x = firstRoom.cx;
+            player.y = firstRoom.cy;
+
+            computeFOV();
+            updateUI();
+            draw();
+            drawMinimap();
+        }
+
+        function initGame() {
+            player = createPlayer();
+            currentFloor = 1;
+            gameOver = false;
+            turnCount = 0;
+            exploredTiles = new Set();
+            document.getElementById('messageLog').innerHTML = '';
+            document.getElementById('gameOverOverlay').classList.remove('show');
+            addMessage('🏰 던전 입구...', 'msg-info');
+            addMessage('⬇️ 계단을 찾아 더 깊이 탐험하세요!', 'msg-info');
+            initFloor();
+        }
+
+        function showGameOver() {
+            document.getElementById('gameOverStats').innerHTML =
+                `레벨 ${player.level} | 도달 층수: B${currentFloor}F<br>` +
+                `턴 수: ${turnCount} | 사용한 물약: ${player.potionsUsed}개`;
+            document.getElementById('gameOverOverlay').classList.add('show');
+        }
+
+        function restartGame() {
+            initGame();
+        }
+
+        // ==================== INPUT ====================
+        document.addEventListener('keydown', (e) => {
+            if (gameOver) return;
+
+            const key = e.key.toLowerCase();
+            let moved = false;
+
+            if (key === 'w' || key === 'arrowup') { tryMove(0, -1); moved = true; }
+            else if (key === 's' || key === 'arrowdown') { tryMove(0, 1); moved = true; }
+            else if (key === 'a' || key === 'arrowleft') { tryMove(-1, 0); moved = true; }
+            else if (key === 'd' || key === 'arrowright') { tryMove(1, 0); moved = true; }
+            else if (key === ' ') { e.preventDefault(); }
+            else if (key === '1') useItem(0);
+            else if (key === '2') useItem(1);
+            else if (key === '3') useItem(2);
+            else if (key === '4') useItem(3);
+
+            if (moved) e.preventDefault();
+        });
+
+        // ==================== START ====================
+        initGame();
+    </script>
+</body>
+</html>
