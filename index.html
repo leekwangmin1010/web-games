@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Games Collection</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: linear-gradient(135deg, #0a0a1a 0%, #1a0a2e 50%, #0a1a2e 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #e0e0e0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        h1 {
+            font-size: 3rem;
+            background: linear-gradient(135deg, #ffd700, #ff6b6b, #ffd700);
+            background-size: 200% auto;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: shine 3s linear infinite;
+            margin-bottom: 10px;
+        }
+        @keyframes shine { to { background-position: 200% center; } }
+        .subtitle { color: #888; margin-bottom: 40px; font-size: 1.1rem; }
+        .games-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            max-width: 900px;
+            width: 100%;
+        }
+        .game-card {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 16px;
+            padding: 30px;
+            text-align: center;
+            text-decoration: none;
+            color: #e0e0e0;
+            transition: all 0.3s;
+        }
+        .game-card:hover {
+            transform: translateY(-5px);
+            border-color: #ffd700;
+            box-shadow: 0 10px 30px rgba(255, 215, 0, 0.2);
+        }
+        .game-card .icon { font-size: 4rem; margin-bottom: 15px; }
+        .game-card .title { font-size: 1.5rem; font-weight: bold; margin-bottom: 10px; }
+        .game-card .desc { font-size: 0.9rem; color: #888; line-height: 1.5; }
+    </style>
+</head>
+<body>
+    <h1>🎮 Web Games</h1>
+    <p class="subtitle">브라우저에서 바로 플레이하는 웹 게임 컬렉션</p>
+    <div class="games-grid">
+        <a href="pong.html" class="game-card">
+            <div class="icon">🏓</div>
+            <div class="title">Pong</div>
+            <div class="desc">클래식 퐁 게임<br>AI 또는 2인용 대전</div>
+        </a>
+        <a href="dungeon-rpg.html" class="game-card">
+            <div class="icon">⚔️</div>
+            <div class="title">Dungeon RPG</div>
+            <div class="desc">턴제 던전 탐험 RPG<br>100종 몬스터 수집</div>
+        </a>
+        <a href="monster-enhance.html" class="game-card">
+            <div class="icon">🔥</div>
+            <div class="title">Monster Enhance</div>
+            <div class="desc">300종 몬스터 강화<br>크리티컬 & 깨짐방지권</div>
+        </a>
+    </div>
+</body>
+</html>
