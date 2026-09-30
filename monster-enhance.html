@@ -1,0 +1,1218 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>몬스터 강화하기</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap');
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: linear-gradient(135deg, #0a0a1a 0%, #1a0a2e 50%, #0a1a2e 100%);
+            min-height: 100vh;
+            font-family: 'Noto Sans KR', sans-serif;
+            color: #e0e0e0;
+            overflow-x: hidden;
+        }
+
+        .game-container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+
+        header { text-align: center; padding: 20px 0; border-bottom: 2px solid #2a2a4a; margin-bottom: 20px; }
+
+        header h1 {
+            font-size: 2.5rem;
+            background: linear-gradient(135deg, #ffd700, #ff6b6b, #ffd700);
+            background-size: 200% auto;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: shine 3s linear infinite;
+        }
+
+        @keyframes shine { to { background-position: 200% center; } }
+
+        .stats-bar { display: flex; justify-content: center; gap: 30px; margin-top: 10px; flex-wrap: wrap; }
+
+        .stat-item {
+            display: flex; align-items: center; gap: 8px;
+            background: rgba(255,255,255,0.05); padding: 8px 16px;
+            border-radius: 20px; border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .stat-item .icon { font-size: 1.3rem; }
+        .stat-item .value { font-weight: bold; color: #ffd700; }
+
+        .main-content { display: grid; grid-template-columns: 1fr 350px; gap: 20px; }
+        @media (max-width: 900px) { .main-content { grid-template-columns: 1fr; } }
+
+        .enhance-section {
+            background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 16px; padding: 25px; text-align: center;
+        }
+
+        .monster-display {
+            position: relative; width: 200px; height: 200px; margin: 0 auto 20px;
+            display: flex; align-items: center; justify-content: center;
+        }
+
+        .monster-sprite { font-size: 6rem; transition: all 0.3s; filter: drop-shadow(0 0 20px rgba(255,215,0,0.5)); }
+        .monster-sprite.enhancing { animation: enhance-shake 0.1s infinite; }
+        @keyframes enhance-shake {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            25% { transform: translate(-3px, 2px) rotate(-2deg); }
+            50% { transform: translate(3px, -2px) rotate(2deg); }
+            75% { transform: translate(-2px, -3px) rotate(-1deg); }
+        }
+        .monster-sprite.success { animation: success-bounce 0.6s ease-out; }
+        @keyframes success-bounce {
+            0% { transform: scale(1); } 30% { transform: scale(1.4); }
+            60% { transform: scale(0.9); } 100% { transform: scale(1); }
+        }
+        .monster-sprite.fail { animation: fail-shake 0.5s ease-out; }
+        @keyframes fail-shake {
+            0%, 100% { transform: translateX(0); filter: grayscale(0); }
+            20% { transform: translateX(-15px); filter: grayscale(1); }
+            40% { transform: translateX(15px); }
+            60% { transform: translateX(-10px); }
+            80% { transform: translateX(10px); }
+        }
+
+        .enhance-level { font-size: 3rem; font-weight: 900; margin: 10px 0; }
+        .enhance-level .plus { color: #ffd700; }
+        .enhance-level .number {
+            background: linear-gradient(135deg, #ffd700, #ff8c00);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+
+        .monster-name { font-size: 1.5rem; font-weight: 700; margin-bottom: 5px; }
+
+        .monster-tier { display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 0.8rem; font-weight: 700; margin-bottom: 15px; }
+        .tier-common { background: #4a4a6a; color: #aaa; }
+        .tier-uncommon { background: #2d5a27; color: #7fff7f; }
+        .tier-rare { background: #1a3a5c; color: #5cb3ff; }
+        .tier-epic { background: #3d1a5c; color: #b35cff; }
+        .tier-legendary { background: #5c3a1a; color: #ffb35c; }
+        .tier-mythic { background: #5c1a1a; color: #ff5c5c; }
+        .tier-divine { background: linear-gradient(135deg, #ffd700, #ff6b6b); color: #000; }
+
+        .success-rate { margin: 15px 0; padding: 12px; background: rgba(0,0,0,0.3); border-radius: 10px; }
+        .rate-bar { height: 20px; background: #1a1a2e; border-radius: 10px; overflow: hidden; margin-top: 8px; position: relative; }
+        .rate-fill { height: 100%; border-radius: 10px; transition: width 0.5s; }
+        .rate-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 0.75rem; font-weight: bold; text-shadow: 0 1px 2px rgba(0,0,0,0.8); }
+
+        .enhance-btn {
+            width: 100%; padding: 18px; font-size: 1.3rem; font-weight: 900;
+            border: none; border-radius: 12px; cursor: pointer; margin-top: 15px;
+            transition: all 0.2s; text-transform: uppercase; letter-spacing: 2px;
+        }
+        .enhance-btn.primary { background: linear-gradient(135deg, #ffd700, #ff8c00); color: #000; box-shadow: 0 4px 20px rgba(255, 215, 0, 0.4); }
+        .enhance-btn.primary:hover { transform: translateY(-2px); box-shadow: 0 6px 30px rgba(255, 215, 0, 0.6); }
+        .enhance-btn.danger { background: linear-gradient(135deg, #ff4444, #cc0000); color: #fff; }
+        .enhance-btn:disabled { background: #333; color: #666; cursor: not-allowed; box-shadow: none; }
+
+        .cost-display { display: flex; justify-content: center; gap: 20px; margin-top: 10px; font-size: 0.9rem; color: #888; }
+        .cost-display span { display: flex; align-items: center; gap: 5px; }
+
+        .battle-section { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 20px; margin-top: 20px; }
+        .battle-section h3 { margin-bottom: 15px; color: #ffd700; }
+
+        .battle-arena {
+            background: rgba(0,0,0,0.3); border-radius: 12px; padding: 20px; min-height: 150px;
+            display: flex; align-items: center; justify-content: center; gap: 30px; position: relative; overflow: hidden;
+        }
+        .battle-arena::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            background: radial-gradient(ellipse at center, rgba(255,100,0,0.1) 0%, transparent 70%); pointer-events: none;
+        }
+
+        .fighter { text-align: center; z-index: 1; }
+        .fighter .sprite { font-size: 3.5rem; transition: all 0.2s; }
+        .fighter .sprite.attacking { animation: attack-lunge 0.3s; }
+        @keyframes attack-lunge { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(20px) scale(1.2); } }
+        .fighter .sprite.hit { animation: hit-recoil 0.3s; }
+        @keyframes hit-recoil { 0%, 100% { transform: translateX(0); filter: brightness(1); } 50% { transform: translateX(-15px); filter: brightness(3) hue-rotate(-30deg); } }
+        .fighter .name { font-size: 0.85rem; margin-top: 5px; color: #aaa; }
+        .fighter .hp-bar { width: 100px; height: 8px; background: #333; border-radius: 4px; margin: 5px auto 0; overflow: hidden; }
+        .fighter .hp-fill { height: 100%; background: linear-gradient(90deg, #e74c3c, #c0392b); border-radius: 4px; transition: width 0.3s; }
+
+        .vs-text { font-size: 2rem; font-weight: 900; color: #ff4444; text-shadow: 0 0 20px rgba(255, 68, 68, 0.5); }
+
+        .battle-log { margin-top: 15px; max-height: 120px; overflow-y: auto; font-size: 0.8rem; line-height: 1.6; }
+        .battle-log::-webkit-scrollbar { width: 4px; }
+        .battle-log::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+        .battle-msg { padding: 2px 0; }
+        .battle-msg.damage { color: #ff6b6b; }
+        .battle-msg.heal { color: #7fff7f; }
+        .battle-msg.gold { color: #ffd700; }
+        .battle-msg.critical { color: #ff4444; font-weight: bold; }
+        .battle-msg.reward { color: #b35cff; font-weight: bold; }
+
+        .sidebar { display: flex; flex-direction: column; gap: 15px; }
+
+        .collection-panel { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 20px; }
+        .collection-panel h3 { margin-bottom: 15px; color: #ffd700; display: flex; justify-content: space-between; align-items: center; }
+        .collection-count { font-size: 0.85rem; color: #888; }
+
+        .monster-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; max-height: 400px; overflow-y: auto; padding-right: 5px; }
+        .monster-grid::-webkit-scrollbar { width: 4px; }
+        .monster-grid::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+
+        .monster-card {
+            aspect-ratio: 1; background: rgba(0,0,0,0.3); border: 2px solid #2a2a4a;
+            border-radius: 10px; display: flex; flex-direction: column; align-items: center;
+            justify-content: center; cursor: pointer; transition: all 0.2s; position: relative;
+        }
+        .monster-card:hover { border-color: #ffd700; transform: scale(1.05); }
+        .monster-card.selected { border-color: #ffd700; box-shadow: 0 0 15px rgba(255, 215, 0, 0.3); }
+        .monster-card.locked { opacity: 0.3; filter: grayscale(1); }
+        .monster-card .card-sprite { font-size: 1.8rem; }
+        .monster-card .card-level { position: absolute; top: 2px; right: 4px; font-size: 0.6rem; color: #ffd700; font-weight: bold; }
+        .monster-card .card-tier { position: absolute; bottom: 2px; left: 0; right: 0; height: 3px; border-radius: 0 0 8px 8px; }
+
+        .sparkle { position: absolute; pointer-events: none; animation: sparkle-fly 1s ease-out forwards; }
+        @keyframes sparkle-fly { 0% { opacity: 1; transform: translate(0, 0) scale(1); } 100% { opacity: 0; transform: translate(var(--tx), var(--ty)) scale(0); } }
+
+        .enhance-result {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            font-size: 4rem; font-weight: 900; z-index: 1000; pointer-events: none;
+            animation: result-pop 1.5s ease-out forwards; text-shadow: 0 0 30px currentColor;
+        }
+        @keyframes result-pop {
+            0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+            20% { opacity: 1; transform: translate(-50%, -50%) scale(1.3); }
+            80% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+            100% { opacity: 0; transform: translate(-50%, -50%) scale(1.5); }
+        }
+        .enhance-result.success { color: #ffd700; }
+        .enhance-result.fail { color: #ff4444; }
+        .enhance-result.critical { color: #ff6b00; font-size: 5rem; }
+
+        .tab-buttons { display: flex; gap: 5px; margin-bottom: 15px; }
+        .tab-btn {
+            flex: 1; padding: 10px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+            color: #888; border-radius: 8px; cursor: pointer; font-size: 0.85rem; transition: all 0.2s;
+        }
+        .tab-btn:hover { background: rgba(255,255,255,0.1); }
+        .tab-btn.active { background: rgba(255, 215, 0, 0.2); border-color: #ffd700; color: #ffd700; }
+
+        .gacha-section { text-align: center; }
+        .gacha-btn {
+            padding: 15px 40px; font-size: 1.1rem; font-weight: 700;
+            background: linear-gradient(135deg, #9b59b6, #8e44ad); border: none;
+            color: #fff; border-radius: 12px; cursor: pointer; transition: all 0.2s; margin: 10px 0;
+        }
+        .gacha-btn:hover { transform: scale(1.05); box-shadow: 0 5px 20px rgba(155, 89, 182, 0.4); }
+
+        .gacha-result { margin-top: 15px; padding: 15px; background: rgba(0,0,0,0.3); border-radius: 10px; display: none; }
+        .gacha-result.show { display: block; animation: gacha-reveal 0.5s ease-out; }
+        @keyframes gacha-reveal { 0% { opacity: 0; transform: scale(0.8); } 100% { opacity: 1; transform: scale(1); } }
+        .gacha-monster { font-size: 4rem; margin: 10px 0; }
+
+        .auto-battle { display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 15px; }
+        .toggle-switch { position: relative; width: 50px; height: 26px; background: #333; border-radius: 13px; cursor: pointer; transition: background 0.3s; }
+        .toggle-switch.active { background: #27ae60; }
+        .toggle-switch::after { content: ''; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; background: #fff; border-radius: 50%; transition: transform 0.3s; }
+        .toggle-switch.active::after { transform: translateX(24px); }
+
+        .save-indicator {
+            position: fixed; bottom: 20px; right: 20px; background: rgba(0,0,0,0.8);
+            padding: 8px 16px; border-radius: 20px; font-size: 0.75rem; color: #888;
+            opacity: 0; transition: opacity 0.3s;
+        }
+        .save-indicator.show { opacity: 1; }
+
+        .reward-popup {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.95); border: 2px solid #ffd700; border-radius: 16px;
+            padding: 30px 40px; text-align: center; z-index: 1000; display: none;
+            animation: reward-popup 0.5s ease-out;
+        }
+        .reward-popup.show { display: block; }
+        @keyframes reward-popup { 0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); } 100% { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
+        .reward-popup .reward-sprite { font-size: 5rem; margin: 10px 0; }
+        .reward-popup .reward-name { font-size: 1.5rem; font-weight: bold; color: #ffd700; }
+        .reward-popup .reward-tier { font-size: 0.9rem; margin-top: 5px; }
+        .reward-popup .reward-close { margin-top: 15px; padding: 10px 30px; background: #ffd700; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
+
+        .inventory-bar {
+            display: flex; justify-content: center; gap: 15px; margin-top: 15px; flex-wrap: wrap;
+        }
+        .inv-item {
+            display: flex; align-items: center; gap: 5px; background: rgba(255,255,255,0.05);
+            padding: 6px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);
+            font-size: 0.85rem;
+        }
+        .inv-item .inv-icon { font-size: 1.2rem; }
+        .inv-item .inv-count { color: #ffd700; font-weight: bold; }
+
+        .shield-toggle {
+            display: flex; align-items: center; justify-content: center; gap: 10px;
+            margin-top: 15px; padding: 10px; background: rgba(255,255,255,0.03);
+            border-radius: 10px; border: 1px solid rgba(255,255,255,0.1);
+        }
+        .shield-toggle .toggle-switch { width: 44px; height: 22px; }
+        .shield-toggle .toggle-switch::after { width: 16px; height: 16px; }
+        .shield-toggle .toggle-switch.active::after { transform: translateX(22px); }
+        .shield-toggle .toggle-switch.active { background: #3498db; }
+        .shield-label { font-size: 0.85rem; color: #888; }
+        .shield-status { font-size: 0.8rem; color: #3498db; font-weight: bold; }
+
+        .critical-indicator {
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            margin-top: 10px; padding: 8px; background: rgba(255, 107, 0, 0.1);
+            border-radius: 8px; border: 1px solid rgba(255, 107, 0, 0.3);
+            font-size: 0.85rem; color: #ff6b00;
+        }
+
+        @media (max-width: 600px) {
+            .monster-grid { grid-template-columns: repeat(4, 1fr); }
+            .stats-bar { gap: 10px; }
+            .stat-item { padding: 6px 10px; font-size: 0.85rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <header>
+            <h1>⚔️ 몬스터 강화하기 ⚔️</h1>
+            <div class="stats-bar">
+                <div class="stat-item">
+                    <span class="icon">💰</span>
+                    <span class="value" id="goldDisplay">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="icon">🛡️</span>
+                    <span class="value" id="shieldCount">0</span>
+                    <span style="color:#666; font-size:0.8rem;">방지권</span>
+                </div>
+                <div class="stat-item">
+                    <span class="icon">🏆</span>
+                    <span class="value" id="totalEnhanceDisplay">0</span>
+                    <span style="color:#666; font-size:0.8rem;">강화</span>
+                </div>
+                <div class="stat-item">
+                    <span class="icon">📊</span>
+                    <span class="value" id="collectionCount">0/300</span>
+                </div>
+            </div>
+        </header>
+
+        <div class="main-content">
+            <div class="left-panel">
+                <div class="enhance-section">
+                    <div class="monster-display">
+                        <div class="monster-sprite" id="monsterSprite">🐀</div>
+                    </div>
+                    <div class="enhance-level">
+                        <span class="plus">+</span><span class="number" id="enhanceLevel">0</span>
+                    </div>
+                    <div class="monster-name" id="monsterName">쥐</div>
+                    <div class="monster-tier tier-common" id="monsterTier">커먼</div>
+
+                    <div class="success-rate">
+                        <div style="display:flex; justify-content:space-between; font-size:0.85rem;">
+                            <span>성공 확률</span>
+                            <span id="successRateText" style="color:#ffd700; font-weight:bold;">100%</span>
+                        </div>
+                        <div class="rate-bar">
+                            <div class="rate-fill" id="successRateBar" style="width:100%; background: linear-gradient(90deg, #27ae60, #2ecc71);"></div>
+                            <span class="rate-text" id="rateText">100%</span>
+                        </div>
+                    </div>
+
+                    <div class="critical-indicator">
+                        <span>💥 크리티컬 확률: <span id="criticalRateText" style="font-weight:bold;">10%</span> (2배 강화)</span>
+                    </div>
+
+                    <div class="cost-display">
+                        <span>💰 <span id="enhanceCost">100</span> 골드</span>
+                        <span>📈 공격력: <span id="atkValue">10</span></span>
+                        <span>❤️ 체력: <span id="hpValue">50</span></span>
+                    </div>
+
+                    <div class="inventory-bar">
+                        <div class="inv-item">
+                            <span class="inv-icon">🛡️</span>
+                            <span>깨짐방지권: <span class="inv-count" id="shieldInventory">0</span>개</span>
+                        </div>
+                    </div>
+
+                    <div class="shield-toggle">
+                        <span class="shield-label">🛡️ 깨짐방지권 사용</span>
+                        <div class="toggle-switch" id="shieldToggle" onclick="toggleShield()"></div>
+                        <span id="shieldStatus" class="shield-status">OFF</span>
+                    </div>
+
+                    <button class="enhance-btn primary" id="enhanceBtn" onclick="tryEnhance()">
+                        ⚡ 강화하기 ⚡
+                    </button>
+                    <button class="enhance-btn danger" id="forceEnhanceBtn" onclick="forceEnhance()" style="margin-top:10px; font-size:0.9rem; padding:12px;">
+                        💀 강제 강화 (파괴 위험)
+                    </button>
+                </div>
+
+                <div class="battle-section">
+                    <h3>⚔️ 자동 전투</h3>
+                    <div class="battle-arena" id="battleArena">
+                        <div class="fighter" id="playerFighter">
+                            <div class="sprite" id="playerBattleSprite">🐀</div>
+                            <div class="name" id="playerBattleName">쥐</div>
+                            <div class="hp-bar"><div class="hp-fill" id="playerHpBar" style="width:100%"></div></div>
+                        </div>
+                        <div class="vs-text">VS</div>
+                        <div class="fighter" id="enemyFighter">
+                            <div class="sprite" id="enemyBattleSprite">👺</div>
+                            <div class="name" id="enemyBattleName">고블린</div>
+                            <div class="hp-bar"><div class="hp-fill" id="enemyHpBar" style="width:100%"></div></div>
+                        </div>
+                    </div>
+                    <div class="battle-log" id="battleLog"></div>
+                    <div class="auto-battle">
+                        <span style="font-size:0.85rem; color:#888;">자동 전투</span>
+                        <div class="toggle-switch" id="autoBattleToggle" onclick="toggleAutoBattle()"></div>
+                        <span id="autoBattleStatus" style="font-size:0.8rem; color:#666;">OFF</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar">
+                <div class="collection-panel gacha-section">
+                    <h3>🎰 몬스터 뽑기</h3>
+                    <div style="font-size:0.8rem; color:#888; margin-bottom:10px;">
+                        골드로 새로운 몬스터를 획득하세요!
+                    </div>
+                    <button class="gacha-btn" onclick="pullGacha()">🎲 뽑기 (💰 500)</button>
+                    <div class="gacha-result" id="gachaResult">
+                        <div class="gacha-monster" id="gachaMonsterSprite"></div>
+                        <div id="gachaMonsterName" style="font-weight:bold;"></div>
+                        <div id="gachaMonsterTier" style="font-size:0.8rem; margin-top:5px;"></div>
+                    </div>
+                </div>
+
+                <div class="collection-panel">
+                    <h3>
+                        📖 도감
+                        <span class="collection-count" id="collectionText">0/300</span>
+                    </h3>
+                    <div class="tab-buttons">
+                        <button class="tab-btn active" onclick="switchTab('all', this)">전체</button>
+                        <button class="tab-btn" onclick="switchTab('owned', this)">보유</button>
+                    </div>
+                    <div class="monster-grid" id="monsterGrid"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="reward-popup" id="rewardPopup">
+        <div style="font-size:1rem; color:#ffd700; font-weight:bold;">🎉 강화 보상!</div>
+        <div class="reward-sprite" id="rewardSprite"></div>
+        <div class="reward-name" id="rewardName"></div>
+        <div class="reward-tier" id="rewardTier"></div>
+        <button class="reward-close" onclick="closeRewardPopup()">확인</button>
+    </div>
+
+    <div class="save-indicator" id="saveIndicator">💾 저장됨</div>
+
+    <script>
+        // ==================== MONSTER DATABASE (300종) ====================
+        const MONSTERS = [
+            // Tier 1: 커먼 (1-60)
+            { id: 1, name: '쥐', sprite: '🐀', tier: 'common', baseAtk: 5, baseHp: 30, gold: 50 },
+            { id: 2, name: '박쥐', sprite: '🦇', tier: 'common', baseAtk: 6, baseHp: 25, gold: 60 },
+            { id: 3, name: '슬라임', sprite: '🟢', tier: 'common', baseAtk: 4, baseHp: 40, gold: 50 },
+            { id: 4, name: '거미', sprite: '🕷️', tier: 'common', baseAtk: 7, baseHp: 28, gold: 70 },
+            { id: 5, name: '뱀', sprite: '🐍', tier: 'common', baseAtk: 8, baseHp: 30, gold: 80 },
+            { id: 6, name: '두꺼비', sprite: '🐸', tier: 'common', baseAtk: 5, baseHp: 35, gold: 60 },
+            { id: 7, name: '달팽이', sprite: '🐌', tier: 'common', baseAtk: 3, baseHp: 50, gold: 50 },
+            { id: 8, name: '지렁이', sprite: '🪱', tier: 'common', baseAtk: 4, baseHp: 32, gold: 50 },
+            { id: 9, name: '개미', sprite: '🐜', tier: 'common', baseAtk: 6, baseHp: 26, gold: 60 },
+            { id: 10, name: '나비', sprite: '🦋', tier: 'common', baseAtk: 4, baseHp: 20, gold: 50 },
+            { id: 11, name: '벌', sprite: '🐝', tier: 'common', baseAtk: 8, baseHp: 22, gold: 70 },
+            { id: 12, name: '딱정벌레', sprite: '🪲', tier: 'common', baseAtk: 5, baseHp: 38, gold: 60 },
+            { id: 13, name: '메뚜기', sprite: '🦗', tier: 'common', baseAtk: 6, baseHp: 24, gold: 60 },
+            { id: 14, name: '사마귀', sprite: '🦟', tier: 'common', baseAtk: 9, baseHp: 26, gold: 80 },
+            { id: 15, name: '바퀴벌레', sprite: '🪳', tier: 'common', baseAtk: 5, baseHp: 45, gold: 60 },
+            { id: 16, name: '파리', sprite: '🪰', tier: 'common', baseAtk: 7, baseHp: 20, gold: 70 },
+            { id: 17, name: '모기', sprite: '🦟', tier: 'common', baseAtk: 8, baseHp: 18, gold: 70 },
+            { id: 18, name: '게', sprite: '🦀', tier: 'common', baseAtk: 7, baseHp: 40, gold: 70 },
+            { id: 19, name: '가재', sprite: '🦞', tier: 'common', baseAtk: 9, baseHp: 35, gold: 90 },
+            { id: 20, name: '문어', sprite: '🐙', tier: 'common', baseAtk: 10, baseHp: 38, gold: 100 },
+            { id: 21, name: '해파리', sprite: '🪼', tier: 'common', baseAtk: 6, baseHp: 30, gold: 60 },
+            { id: 22, name: '성게', sprite: '🦔', tier: 'common', baseAtk: 7, baseHp: 35, gold: 70 },
+            { id: 23, name: '불가사리', sprite: '⭐', tier: 'common', baseAtk: 5, baseHp: 40, gold: 60 },
+            { id: 24, name: '말미잘', sprite: '🌺', tier: 'common', baseAtk: 8, baseHp: 25, gold: 80 },
+            { id: 25, name: '플랑크톤', sprite: '🦠', tier: 'common', baseAtk: 3, baseHp: 20, gold: 50 },
+            { id: 26, name: '유글레나', sprite: '🦠', tier: 'common', baseAtk: 4, baseHp: 22, gold: 55 },
+            { id: 27, name: '아메바', sprite: '🦠', tier: 'common', baseAtk: 3, baseHp: 25, gold: 50 },
+            { id: 28, name: '곰팡이', sprite: '🍄', tier: 'common', baseAtk: 5, baseHp: 30, gold: 60 },
+            { id: 29, name: '이끼', sprite: '🌿', tier: 'common', baseAtk: 2, baseHp: 45, gold: 50 },
+            { id: 30, name: '버섯', sprite: '🍄', tier: 'common', baseAtk: 6, baseHp: 28, gold: 65 },
+            { id: 31, name: '독버섯', sprite: '🍄', tier: 'common', baseAtk: 8, baseHp: 24, gold: 75 },
+            { id: 32, name: '선인장', sprite: '🌵', tier: 'common', baseAtk: 7, baseHp: 40, gold: 70 },
+            { id: 33, name: '풀', sprite: '🌱', tier: 'common', baseAtk: 2, baseHp: 35, gold: 50 },
+            { id: 34, name: '새싹', sprite: '🌱', tier: 'common', baseAtk: 3, baseHp: 30, gold: 55 },
+            { id: 35, name: '나뭇잎', sprite: '🍃', tier: 'common', baseAtk: 4, baseHp: 25, gold: 60 },
+            { id: 36, name: '꽃', sprite: '🌸', tier: 'common', baseAtk: 5, baseHp: 20, gold: 65 },
+            { id: 37, name: '장미', sprite: '🌹', tier: 'common', baseAtk: 7, baseHp: 22, gold: 75 },
+            { id: 38, name: '해바라기', sprite: '🌻', tier: 'common', baseAtk: 6, baseHp: 30, gold: 70 },
+            { id: 39, name: '벚꽃', sprite: '🌸', tier: 'common', baseAtk: 5, baseHp: 28, gold: 65 },
+            { id: 40, name: '연꽃', sprite: '🪷', tier: 'common', baseAtk: 8, baseHp: 35, gold: 85 },
+            { id: 41, name: '이끼슬라임', sprite: '🟢', tier: 'common', baseAtk: 6, baseHp: 38, gold: 70 },
+            { id: 42, name: '돌슬라임', sprite: '🪨', tier: 'common', baseAtk: 5, baseHp: 50, gold: 65 },
+            { id: 43, name: '흙슬라임', sprite: '🟤', tier: 'common', baseAtk: 4, baseHp: 45, gold: 60 },
+            { id: 44, name: '물슬라임', sprite: '💧', tier: 'common', baseAtk: 5, baseHp: 40, gold: 65 },
+            { id: 45, name: '불슬라임', sprite: '🔥', tier: 'common', baseAtk: 8, baseHp: 30, gold: 80 },
+            { id: 46, name: '얼음슬라임', sprite: '🧊', tier: 'common', baseAtk: 6, baseHp: 35, gold: 70 },
+            { id: 47, name: '독슬라임', sprite: '☠️', tier: 'common', baseAtk: 9, baseHp: 28, gold: 85 },
+            { id: 48, name: '그림자슬라임', sprite: '👤', tier: 'common', baseAtk: 7, baseHp: 32, gold: 75 },
+            { id: 49, name: '빛슬라임', sprite: '✨', tier: 'common', baseAtk: 6, baseHp: 30, gold: 70 },
+            { id: 50, name: '어둠슬라임', sprite: '🌑', tier: 'common', baseAtk: 8, baseHp: 34, gold: 80 },
+            { id: 51, name: '형광슬라임', sprite: '💡', tier: 'common', baseAtk: 5, baseHp: 28, gold: 65 },
+            { id: 52, name: '무지개슬라임', sprite: '🌈', tier: 'common', baseAtk: 7, baseHp: 36, gold: 75 },
+            { id: 53, name: '금슬라임', sprite: '🪙', tier: 'common', baseAtk: 6, baseHp: 42, gold: 70 },
+            { id: 54, name: '은슬라임', sprite: '🥈', tier: 'common', baseAtk: 5, baseHp: 40, gold: 65 },
+            { id: 55, name: '다이아슬라임', sprite: '💎', tier: 'common', baseAtk: 8, baseHp: 38, gold: 85 },
+            { id: 56, name: '루비슬라임', sprite: '❤️', tier: 'common', baseAtk: 7, baseHp: 35, gold: 80 },
+            { id: 57, name: '사파이어슬라임', sprite: '💙', tier: 'common', baseAtk: 7, baseHp: 35, gold: 80 },
+            { id: 58, name: '에메랄드슬라임', sprite: '💚', tier: 'common', baseAtk: 7, baseHp: 35, gold: 80 },
+            { id: 59, name: '토파즈슬라임', sprite: '💛', tier: 'common', baseAtk: 7, baseHp: 35, gold: 80 },
+            { id: 60, name: '오팔슬라임', sprite: '🤍', tier: 'common', baseAtk: 7, baseHp: 35, gold: 80 },
+
+            // Tier 2: 언커먼 (61-120)
+            { id: 61, name: '고블린', sprite: '👺', tier: 'uncommon', baseAtk: 12, baseHp: 60, gold: 150 },
+            { id: 62, name: '스켈레톤', sprite: '💀', tier: 'uncommon', baseAtk: 14, baseHp: 50, gold: 175 },
+            { id: 63, name: '좀비', sprite: '🧟', tier: 'uncommon', baseAtk: 10, baseHp: 80, gold: 150 },
+            { id: 64, name: '늑대', sprite: '🐺', tier: 'uncommon', baseAtk: 15, baseHp: 55, gold: 200 },
+            { id: 65, name: '곰', sprite: '🐻', tier: 'uncommon', baseAtk: 18, baseHp: 90, gold: 225 },
+            { id: 66, name: '호랑이', sprite: '🐯', tier: 'uncommon', baseAtk: 20, baseHp: 70, gold: 250 },
+            { id: 67, name: '사자', sprite: '🦁', tier: 'uncommon', baseAtk: 22, baseHp: 75, gold: 275 },
+            { id: 68, name: '독수리', sprite: '🦅', tier: 'uncommon', baseAtk: 18, baseHp: 50, gold: 225 },
+            { id: 69, name: '상어', sprite: '🦈', tier: 'uncommon', baseAtk: 20, baseHp: 65, gold: 250 },
+            { id: 70, name: '코브라', sprite: '🐍', tier: 'uncommon', baseAtk: 16, baseHp: 45, gold: 200 },
+            { id: 71, name: '독거미', sprite: '🕷️', tier: 'uncommon', baseAtk: 17, baseHp: 48, gold: 210 },
+            { id: 72, name: '전갈', sprite: '🦂', tier: 'uncommon', baseAtk: 19, baseHp: 52, gold: 240 },
+            { id: 73, name: '오우거', sprite: '👹', tier: 'uncommon', baseAtk: 22, baseHp: 85, gold: 275 },
+            { id: 74, name: '트롤', sprite: '🧌', tier: 'uncommon', baseAtk: 20, baseHp: 100, gold: 250 },
+            { id: 75, name: '미노타우로스', sprite: '🐂', tier: 'uncommon', baseAtk: 24, baseHp: 95, gold: 300 },
+            { id: 76, name: '켄타우로스', sprite: '🏇', tier: 'uncommon', baseAtk: 21, baseHp: 70, gold: 275 },
+            { id: 77, name: '그리핀', sprite: '🦅', tier: 'uncommon', baseAtk: 23, baseHp: 65, gold: 300 },
+            { id: 78, name: '유니콘', sprite: '🦄', tier: 'uncommon', baseAtk: 18, baseHp: 80, gold: 250 },
+            { id: 79, name: '페가수스', sprite: '🐴', tier: 'uncommon', baseAtk: 19, baseHp: 60, gold: 275 },
+            { id: 80, name: '드래곤 새끼', sprite: '🐲', tier: 'uncommon', baseAtk: 25, baseHp: 75, gold: 325 },
+            { id: 81, name: '고블린 전사', sprite: '👺', tier: 'uncommon', baseAtk: 16, baseHp: 70, gold: 200 },
+            { id: 82, name: '고블린 마법사', sprite: '🧙', tier: 'uncommon', baseAtk: 20, baseHp: 55, gold: 250 },
+            { id: 83, name: '고블린 왕', sprite: '👑', tier: 'uncommon', baseAtk: 24, baseHp: 90, gold: 300 },
+            { id: 84, name: '스켈레톤 전사', sprite: '💀', tier: 'uncommon', baseAtk: 18, baseHp: 60, gold: 225 },
+            { id: 85, name: '스켈레톤 궁수', sprite: '🏹', tier: 'uncommon', baseAtk: 20, baseHp: 50, gold: 250 },
+            { id: 86, name: '스켈레톤 마법사', sprite: '☠️', tier: 'uncommon', baseAtk: 22, baseHp: 45, gold: 275 },
+            { id: 87, name: '좀비 전사', sprite: '🧟', tier: 'uncommon', baseAtk: 14, baseHp: 90, gold: 200 },
+            { id: 88, name: '좀비 마법사', sprite: '🧟', tier: 'uncommon', baseAtk: 18, baseHp: 70, gold: 250 },
+            { id: 89, name: '좀비 왕', sprite: '🧟', tier: 'uncommon', baseAtk: 20, baseHp: 110, gold: 300 },
+            { id: 90, name: '늑대 전사', sprite: '🐺', tier: 'uncommon', baseAtk: 18, baseHp: 65, gold: 225 },
+            { id: 91, name: '늑대 알파', sprite: '🐺', tier: 'uncommon', baseAtk: 22, baseHp: 80, gold: 275 },
+            { id: 92, name: '늑대 왕', sprite: '🐺', tier: 'uncommon', baseAtk: 26, baseHp: 95, gold: 325 },
+            { id: 93, name: '곰 전사', sprite: '🐻', tier: 'uncommon', baseAtk: 22, baseHp: 100, gold: 275 },
+            { id: 94, name: '곰 알파', sprite: '🐻', tier: 'uncommon', baseAtk: 26, baseHp: 120, gold: 325 },
+            { id: 95, name: '곰 왕', sprite: '🐻', tier: 'uncommon', baseAtk: 30, baseHp: 140, gold: 375 },
+            { id: 96, name: '호랑이 전사', sprite: '🐯', tier: 'uncommon', baseAtk: 24, baseHp: 80, gold: 300 },
+            { id: 97, name: '호랑이 알파', sprite: '🐯', tier: 'uncommon', baseAtk: 28, baseHp: 95, gold: 350 },
+            { id: 98, name: '호랑이 왕', sprite: '🐯', tier: 'uncommon', baseAtk: 32, baseHp: 110, gold: 400 },
+            { id: 99, name: '사자 전사', sprite: '🦁', tier: 'uncommon', baseAtk: 26, baseHp: 85, gold: 325 },
+            { id: 100, name: '사자 알파', sprite: '🦁', tier: 'uncommon', baseAtk: 30, baseHp: 100, gold: 375 },
+            { id: 101, name: '사자 왕', sprite: '🦁', tier: 'uncommon', baseAtk: 34, baseHp: 115, gold: 425 },
+            { id: 102, name: '독수리 전사', sprite: '🦅', tier: 'uncommon', baseAtk: 22, baseHp: 60, gold: 275 },
+            { id: 103, name: '독수리 알파', sprite: '🦅', tier: 'uncommon', baseAtk: 26, baseHp: 70, gold: 325 },
+            { id: 104, name: '독수리 왕', sprite: '🦅', tier: 'uncommon', baseAtk: 30, baseHp: 80, gold: 375 },
+            { id: 105, name: '상어 전사', sprite: '🦈', tier: 'uncommon', baseAtk: 24, baseHp: 75, gold: 300 },
+            { id: 106, name: '상어 알파', sprite: '🦈', tier: 'uncommon', baseAtk: 28, baseHp: 90, gold: 350 },
+            { id: 107, name: '상어 왕', sprite: '🦈', tier: 'uncommon', baseAtk: 32, baseHp: 105, gold: 400 },
+            { id: 108, name: '코브라 전사', sprite: '🐍', tier: 'uncommon', baseAtk: 20, baseHp: 55, gold: 250 },
+            { id: 109, name: '코브라 알파', sprite: '🐍', tier: 'uncommon', baseAtk: 24, baseHp: 65, gold: 300 },
+            { id: 110, name: '코브라 왕', sprite: '🐍', tier: 'uncommon', baseAtk: 28, baseHp: 75, gold: 350 },
+            { id: 111, name: '독거미 전사', sprite: '🕷️', tier: 'uncommon', baseAtk: 21, baseHp: 58, gold: 260 },
+            { id: 112, name: '독거미 알파', sprite: '🕷️', tier: 'uncommon', baseAtk: 25, baseHp: 68, gold: 310 },
+            { id: 113, name: '독거미 왕', sprite: '🕷️', tier: 'uncommon', baseAtk: 29, baseHp: 78, gold: 360 },
+            { id: 114, name: '전갈 전사', sprite: '🦂', tier: 'uncommon', baseAtk: 23, baseHp: 62, gold: 280 },
+            { id: 115, name: '전갈 알파', sprite: '🦂', tier: 'uncommon', baseAtk: 27, baseHp: 72, gold: 330 },
+            { id: 116, name: '전갈 왕', sprite: '🦂', tier: 'uncommon', baseAtk: 31, baseHp: 82, gold: 380 },
+            { id: 117, name: '오우거 전사', sprite: '👹', tier: 'uncommon', baseAtk: 26, baseHp: 95, gold: 325 },
+            { id: 118, name: '오우거 알파', sprite: '👹', tier: 'uncommon', baseAtk: 30, baseHp: 110, gold: 375 },
+            { id: 119, name: '오우거 왕', sprite: '👹', tier: 'uncommon', baseAtk: 34, baseHp: 125, gold: 425 },
+            { id: 120, name: '트롤 전사', sprite: '🧌', tier: 'uncommon', baseAtk: 24, baseHp: 110, gold: 300 },
+
+            // Tier 3: 레어 (121-180)
+            { id: 121, name: '망령', sprite: '👻', tier: 'rare', baseAtk: 28, baseHp: 70, gold: 400 },
+            { id: 122, name: '흡혈귀', sprite: '🧛', tier: 'rare', baseAtk: 30, baseHp: 85, gold: 450 },
+            { id: 123, name: '웨어울프', sprite: '🐺', tier: 'rare', baseAtk: 32, baseHp: 90, gold: 475 },
+            { id: 124, name: '리치', sprite: '☠️', tier: 'rare', baseAtk: 35, baseHp: 60, gold: 500 },
+            { id: 125, name: '데몬', sprite: '😈', tier: 'rare', baseAtk: 38, baseHp: 100, gold: 550 },
+            { id: 126, name: '발록', sprite: '👿', tier: 'rare', baseAtk: 40, baseHp: 110, gold: 600 },
+            { id: 127, name: '베히모스', sprite: '🦣', tier: 'rare', baseAtk: 36, baseHp: 150, gold: 500 },
+            { id: 128, name: '크라켄', sprite: '🦑', tier: 'rare', baseAtk: 42, baseHp: 120, gold: 650 },
+            { id: 129, name: '리바이어던', sprite: '🐍', tier: 'rare', baseAtk: 40, baseHp: 130, gold: 625 },
+            { id: 130, name: '히드라', sprite: '🐉', tier: 'rare', baseAtk: 38, baseHp: 140, gold: 600 },
+            { id: 131, name: '피닉스', sprite: '🔥', tier: 'rare', baseAtk: 45, baseHp: 80, gold: 700 },
+            { id: 132, name: '썬더버드', sprite: '⚡', tier: 'rare', baseAtk: 44, baseHp: 75, gold: 675 },
+            { id: 133, name: '프로스트 자이언트', sprite: '🧊', tier: 'rare', baseAtk: 40, baseHp: 160, gold: 600 },
+            { id: 134, name: '파이어 엘리멘탈', sprite: '🔥', tier: 'rare', baseAtk: 48, baseHp: 70, gold: 750 },
+            { id: 135, name: '워터 엘리멘탈', sprite: '💧', tier: 'rare', baseAtk: 42, baseHp: 90, gold: 650 },
+            { id: 136, name: '어스 엘리멘탈', sprite: '🪨', tier: 'rare', baseAtk: 38, baseHp: 140, gold: 600 },
+            { id: 137, name: '에어 엘리멘탈', sprite: '🌪️', tier: 'rare', baseAtk: 46, baseHp: 65, gold: 725 },
+            { id: 138, name: '쉐도우 나이트', sprite: '🗡️', tier: 'rare', baseAtk: 50, baseHp: 85, gold: 800 },
+            { id: 139, name: '팔라딘', sprite: '⚔️', tier: 'rare', baseAtk: 42, baseHp: 120, gold: 650 },
+            { id: 140, name: '아크메이지', sprite: '🧙', tier: 'rare', baseAtk: 55, baseHp: 60, gold: 850 },
+            { id: 141, name: '망령 전사', sprite: '👻', tier: 'rare', baseAtk: 32, baseHp: 80, gold: 450 },
+            { id: 142, name: '망령 마법사', sprite: '👻', tier: 'rare', baseAtk: 38, baseHp: 65, gold: 500 },
+            { id: 143, name: '망령 왕', sprite: '👻', tier: 'rare', baseAtk: 44, baseHp: 95, gold: 550 },
+            { id: 144, name: '흡혈귀 전사', sprite: '🧛', tier: 'rare', baseAtk: 34, baseHp: 95, gold: 475 },
+            { id: 145, name: '흡혈귀 마법사', sprite: '🧛', tier: 'rare', baseAtk: 40, baseHp: 75, gold: 525 },
+            { id: 146, name: '흡혈귀 왕', sprite: '🧛', tier: 'rare', baseAtk: 46, baseHp: 110, gold: 575 },
+            { id: 147, name: '웨어울프 전사', sprite: '🐺', tier: 'rare', baseAtk: 36, baseHp: 100, gold: 500 },
+            { id: 148, name: '웨어울프 마법사', sprite: '🐺', tier: 'rare', baseAtk: 42, baseHp: 80, gold: 550 },
+            { id: 149, name: '웨어울프 왕', sprite: '🐺', tier: 'rare', baseAtk: 48, baseHp: 115, gold: 600 },
+            { id: 150, name: '리치 전사', sprite: '☠️', tier: 'rare', baseAtk: 38, baseHp: 70, gold: 525 },
+            { id: 151, name: '리치 마법사', sprite: '☠️', tier: 'rare', baseAtk: 44, baseHp: 55, gold: 575 },
+            { id: 152, name: '리치 왕', sprite: '☠️', tier: 'rare', baseAtk: 50, baseHp: 80, gold: 625 },
+            { id: 153, name: '데몬 전사', sprite: '😈', tier: 'rare', baseAtk: 42, baseHp: 110, gold: 575 },
+            { id: 154, name: '데몬 마법사', sprite: '😈', tier: 'rare', baseAtk: 48, baseHp: 85, gold: 625 },
+            { id: 155, name: '데몬 왕', sprite: '😈', tier: 'rare', baseAtk: 54, baseHp: 125, gold: 675 },
+            { id: 156, name: '발록 전사', sprite: '👿', tier: 'rare', baseAtk: 44, baseHp: 120, gold: 625 },
+            { id: 157, name: '발록 마법사', sprite: '👿', tier: 'rare', baseAtk: 50, baseHp: 95, gold: 675 },
+            { id: 158, name: '발록 왕', sprite: '👿', tier: 'rare', baseAtk: 56, baseHp: 135, gold: 725 },
+            { id: 159, name: '베히모스 전사', sprite: '🦣', tier: 'rare', baseAtk: 40, baseHp: 160, gold: 550 },
+            { id: 160, name: '베히모스 마법사', sprite: '🦣', tier: 'rare', baseAtk: 46, baseHp: 130, gold: 600 },
+            { id: 161, name: '베히모스 왕', sprite: '🦣', tier: 'rare', baseAtk: 52, baseHp: 180, gold: 650 },
+            { id: 162, name: '크라켄 전사', sprite: '🦑', tier: 'rare', baseAtk: 46, baseHp: 130, gold: 675 },
+            { id: 163, name: '크라켄 마법사', sprite: '🦑', tier: 'rare', baseAtk: 52, baseHp: 105, gold: 725 },
+            { id: 164, name: '크라켄 왕', sprite: '🦑', tier: 'rare', baseAtk: 58, baseHp: 145, gold: 775 },
+            { id: 165, name: '리바이어던 전사', sprite: '🐍', tier: 'rare', baseAtk: 44, baseHp: 140, gold: 650 },
+            { id: 166, name: '리바이어던 마법사', sprite: '🐍', tier: 'rare', baseAtk: 50, baseHp: 115, gold: 700 },
+            { id: 167, name: '리바이어던 왕', sprite: '🐍', tier: 'rare', baseAtk: 56, baseHp: 155, gold: 750 },
+            { id: 168, name: '히드라 전사', sprite: '🐉', tier: 'rare', baseAtk: 42, baseHp: 150, gold: 625 },
+            { id: 169, name: '히드라 마법사', sprite: '🐉', tier: 'rare', baseAtk: 48, baseHp: 125, gold: 675 },
+            { id: 170, name: '히드라 왕', sprite: '🐉', tier: 'rare', baseAtk: 54, baseHp: 165, gold: 725 },
+            { id: 171, name: '피닉스 전사', sprite: '🔥', tier: 'rare', baseAtk: 48, baseHp: 90, gold: 725 },
+            { id: 172, name: '피닉스 마법사', sprite: '🔥', tier: 'rare', baseAtk: 54, baseHp: 70, gold: 775 },
+            { id: 173, name: '피닉스 왕', sprite: '🔥', tier: 'rare', baseAtk: 60, baseHp: 100, gold: 825 },
+            { id: 174, name: '썬더버드 전사', sprite: '⚡', tier: 'rare', baseAtk: 48, baseHp: 85, gold: 700 },
+            { id: 175, name: '썬더버드 마법사', sprite: '⚡', tier: 'rare', baseAtk: 54, baseHp: 65, gold: 750 },
+            { id: 176, name: '썬더버드 왕', sprite: '⚡', tier: 'rare', baseAtk: 60, baseHp: 95, gold: 800 },
+            { id: 177, name: '프로스트 자이언트 전사', sprite: '🧊', tier: 'rare', baseAtk: 44, baseHp: 170, gold: 625 },
+            { id: 178, name: '프로스트 자이언트 마법사', sprite: '🧊', tier: 'rare', baseAtk: 50, baseHp: 140, gold: 675 },
+            { id: 179, name: '프로스트 자이언트 왕', sprite: '🧊', tier: 'rare', baseAtk: 56, baseHp: 190, gold: 725 },
+            { id: 180, name: '파이어 엘리멘탈 전사', sprite: '🔥', tier: 'rare', baseAtk: 52, baseHp: 80, gold: 775 },
+
+            // Tier 4: 에픽 (181-240)
+            { id: 181, name: '드래곤', sprite: '🐉', tier: 'epic', baseAtk: 60, baseHp: 200, gold: 1250 },
+            { id: 182, name: '고대 드래곤', sprite: '🐲', tier: 'epic', baseAtk: 75, baseHp: 280, gold: 1750 },
+            { id: 183, name: '리치 킹', sprite: '👑', tier: 'epic', baseAtk: 70, baseHp: 180, gold: 1500 },
+            { id: 184, name: '뱀파이어 로드', sprite: '🧛', tier: 'epic', baseAtk: 65, baseHp: 220, gold: 1400 },
+            { id: 185, name: '데몬 로드', sprite: '👿', tier: 'epic', baseAtk: 80, baseHp: 250, gold: 1900 },
+            { id: 186, name: '오메가 비스트', sprite: '🦖', tier: 'epic', baseAtk: 72, baseHp: 300, gold: 1600 },
+            { id: 187, name: '키메라', sprite: '🦁', tier: 'epic', baseAtk: 68, baseHp: 240, gold: 1450 },
+            { id: 188, name: '스핑크스', sprite: '🦁', tier: 'epic', baseAtk: 66, baseHp: 260, gold: 1400 },
+            { id: 189, name: '세라핌', sprite: '👼', tier: 'epic', baseAtk: 62, baseHp: 200, gold: 1350 },
+            { id: 190, name: '가디언 엔젤', sprite: '😇', tier: 'epic', baseAtk: 58, baseHp: 320, gold: 1300 },
+            { id: 191, name: '아크 데몬', sprite: '😈', tier: 'epic', baseAtk: 85, baseHp: 230, gold: 2000 },
+            { id: 192, name: '엘더 리치', sprite: '💀', tier: 'epic', baseAtk: 78, baseHp: 190, gold: 1750 },
+            { id: 193, name: '포트리스 골렘', sprite: '🗿', tier: 'epic', baseAtk: 55, baseHp: 500, gold: 1500 },
+            { id: 194, name: '다이아몬드 골렘', sprite: '💎', tier: 'epic', baseAtk: 65, baseHp: 450, gold: 1750 },
+            { id: 195, name: '오블리비온 드래곤', sprite: '🐉', tier: 'epic', baseAtk: 90, baseHp: 350, gold: 2250 },
+            { id: 196, name: '카오스 로드', sprite: '🌀', tier: 'epic', baseAtk: 88, baseHp: 280, gold: 2100 },
+            { id: 197, name: '이벤트 호라이즌', sprite: '🌌', tier: 'epic', baseAtk: 82, baseHp: 300, gold: 1900 },
+            { id: 198, name: '널 포스', sprite: '🕳️', tier: 'epic', baseAtk: 95, baseHp: 200, gold: 2400 },
+            { id: 199, name: '인피니티 비스트', sprite: '♾️', tier: 'epic', baseAtk: 92, baseHp: 320, gold: 2300 },
+            { id: 200, name: '이터널 드래곤', sprite: '🐲', tier: 'epic', baseAtk: 100, baseHp: 400, gold: 2500 },
+            { id: 201, name: '드래곤 로드', sprite: '🐉', tier: 'epic', baseAtk: 80, baseHp: 250, gold: 1600 },
+            { id: 202, name: '드래곤 프린스', sprite: '🐲', tier: 'epic', baseAtk: 70, baseHp: 220, gold: 1450 },
+            { id: 203, name: '드래곤 프린세스', sprite: '🐲', tier: 'epic', baseAtk: 68, baseHp: 230, gold: 1400 },
+            { id: 204, name: '드래곤 나이트', sprite: '🐉', tier: 'epic', baseAtk: 75, baseHp: 240, gold: 1500 },
+            { id: 205, name: '드래곤 메이지', sprite: '🐉', tier: 'epic', baseAtk: 85, baseHp: 200, gold: 1700 },
+            { id: 206, name: '드래곤 팔라딘', sprite: '🐉', tier: 'epic', baseAtk: 78, baseHp: 260, gold: 1550 },
+            { id: 207, name: '드래곤 어쌔신', sprite: '🐉', tier: 'epic', baseAtk: 90, baseHp: 180, gold: 1800 },
+            { id: 208, name: '드래곤 비숍', sprite: '🐉', tier: 'epic', baseAtk: 82, baseHp: 210, gold: 1650 },
+            { id: 209, name: '드래곤 드루이드', sprite: '🐉', tier: 'epic', baseAtk: 76, baseHp: 230, gold: 1500 },
+            { id: 210, name: '드래곤 레인저', sprite: '🐉', tier: 'epic', baseAtk: 80, baseHp: 190, gold: 1600 },
+            { id: 211, name: '고대 드래곤 로드', sprite: '🐲', tier: 'epic', baseAtk: 90, baseHp: 300, gold: 1900 },
+            { id: 212, name: '고대 드래곤 프린스', sprite: '🐲', tier: 'epic', baseAtk: 80, baseHp: 270, gold: 1750 },
+            { id: 213, name: '고대 드래곤 프린세스', sprite: '🐲', tier: 'epic', baseAtk: 78, baseHp: 280, gold: 1700 },
+            { id: 214, name: '고대 드래곤 나이트', sprite: '🐲', tier: 'epic', baseAtk: 85, baseHp: 290, gold: 1800 },
+            { id: 215, name: '고대 드래곤 메이지', sprite: '🐲', tier: 'epic', baseAtk: 95, baseHp: 250, gold: 2000 },
+            { id: 216, name: '고대 드래곤 팔라딘', sprite: '🐲', tier: 'epic', baseAtk: 88, baseHp: 310, gold: 1850 },
+            { id: 217, name: '고대 드래곤 어쌔신', sprite: '🐲', tier: 'epic', baseAtk: 100, baseHp: 230, gold: 2100 },
+            { id: 218, name: '고대 드래곤 비숍', sprite: '🐲', tier: 'epic', baseAtk: 92, baseHp: 260, gold: 1950 },
+            { id: 219, name: '고대 드래곤 드루이드', sprite: '🐲', tier: 'epic', baseAtk: 86, baseHp: 280, gold: 1800 },
+            { id: 220, name: '고대 드래곤 레인저', sprite: '🐲', tier: 'epic', baseAtk: 90, baseHp: 240, gold: 1900 },
+            { id: 221, name: '리치 킹 로드', sprite: '👑', tier: 'epic', baseAtk: 85, baseHp: 200, gold: 1700 },
+            { id: 222, name: '리치 킹 프린스', sprite: '👑', tier: 'epic', baseAtk: 75, baseHp: 170, gold: 1550 },
+            { id: 223, name: '리치 킹 프린세스', sprite: '👑', tier: 'epic', baseAtk: 73, baseHp: 180, gold: 1500 },
+            { id: 224, name: '리치 킹 나이트', sprite: '👑', tier: 'epic', baseAtk: 80, baseHp: 190, gold: 1600 },
+            { id: 225, name: '리치 킹 메이지', sprite: '👑', tier: 'epic', baseAtk: 90, baseHp: 150, gold: 1800 },
+            { id: 226, name: '리치 킹 팔라딘', sprite: '👑', tier: 'epic', baseAtk: 83, baseHp: 210, gold: 1650 },
+            { id: 227, name: '리치 킹 어쌔신', sprite: '👑', tier: 'epic', baseAtk: 95, baseHp: 130, gold: 1900 },
+            { id: 228, name: '리치 킹 비숍', sprite: '👑', tier: 'epic', baseAtk: 87, baseHp: 160, gold: 1750 },
+            { id: 229, name: '리치 킹 드루이드', sprite: '👑', tier: 'epic', baseAtk: 81, baseHp: 180, gold: 1600 },
+            { id: 230, name: '리치 킹 레인저', sprite: '👑', tier: 'epic', baseAtk: 85, baseHp: 140, gold: 1700 },
+            { id: 231, name: '뱀파이어 로드 로드', sprite: '🧛', tier: 'epic', baseAtk: 80, baseHp: 240, gold: 1600 },
+            { id: 232, name: '뱀파이어 로드 프린스', sprite: '🧛', tier: 'epic', baseAtk: 70, baseHp: 210, gold: 1450 },
+            { id: 233, name: '뱀파이어 로드 프린세스', sprite: '🧛', tier: 'epic', baseAtk: 68, baseHp: 220, gold: 1400 },
+            { id: 234, name: '뱀파이어 로드 나이트', sprite: '🧛', tier: 'epic', baseAtk: 75, baseHp: 230, gold: 1500 },
+            { id: 235, name: '뱀파이어 로드 메이지', sprite: '🧛', tier: 'epic', baseAtk: 85, baseHp: 190, gold: 1700 },
+            { id: 236, name: '뱀파이어 로드 팔라딘', sprite: '🧛', tier: 'epic', baseAtk: 78, baseHp: 250, gold: 1550 },
+            { id: 237, name: '뱀파이어 로드 어쌔신', sprite: '🧛', tier: 'epic', baseAtk: 90, baseHp: 170, gold: 1800 },
+            { id: 238, name: '뱀파이어 로드 비숍', sprite: '🧛', tier: 'epic', baseAtk: 82, baseHp: 200, gold: 1650 },
+            { id: 239, name: '뱀파이어 로드 드루이드', sprite: '🧛', tier: 'epic', baseAtk: 76, baseHp: 220, gold: 1500 },
+            { id: 240, name: '뱀파이어 로드 레인저', sprite: '🧛', tier: 'epic', baseAtk: 80, baseHp: 180, gold: 1600 },
+
+            // Tier 5: 레전더리 (241-280)
+            { id: 241, name: '레전더리 드래곤', sprite: '🐉', tier: 'legendary', baseAtk: 120, baseHp: 500, gold: 4000 },
+            { id: 242, name: '크로노스', sprite: '⏰', tier: 'legendary', baseAtk: 110, baseHp: 450, gold: 3750 },
+            { id: 243, name: '제우스', sprite: '⚡', tier: 'legendary', baseAtk: 130, baseHp: 400, gold: 4500 },
+            { id: 244, name: '오딘', sprite: '🔱', tier: 'legendary', baseAtk: 125, baseHp: 480, gold: 4250 },
+            { id: 245, name: '라', sprite: '☀️', tier: 'legendary', baseAtk: 115, baseHp: 520, gold: 4000 },
+            { id: 246, name: '아누비스', sprite: '🐕', tier: 'legendary', baseAtk: 118, baseHp: 460, gold: 4100 },
+            { id: 247, name: '토르', sprite: '🔨', tier: 'legendary', baseAtk: 128, baseHp: 440, gold: 4400 },
+            { id: 248, name: '아테나', sprite: '🦉', tier: 'legendary', baseAtk: 112, baseHp: 500, gold: 3900 },
+            { id: 249, name: '하데스', sprite: '💀', tier: 'legendary', baseAtk: 135, baseHp: 420, gold: 4750 },
+            { id: 250, name: '포세이돈', sprite: '🔱', tier: 'legendary', baseAtk: 122, baseHp: 470, gold: 4200 },
+            { id: 251, name: '아레스', sprite: '⚔️', tier: 'legendary', baseAtk: 140, baseHp: 380, gold: 5000 },
+            { id: 252, name: '헤라', sprite: '👸', tier: 'legendary', baseAtk: 116, baseHp: 490, gold: 4050 },
+            { id: 253, name: '아폴론', sprite: '🏹', tier: 'legendary', baseAtk: 124, baseHp: 430, gold: 4300 },
+            { id: 254, name: '아르테미스', sprite: '🌙', tier: 'legendary', baseAtk: 126, baseHp: 410, gold: 4350 },
+            { id: 255, name: '헤파이스토스', sprite: '🔨', tier: 'legendary', baseAtk: 120, baseHp: 550, gold: 4150 },
+            { id: 256, name: '레전더리 드래곤 로드', sprite: '🐉', tier: 'legendary', baseAtk: 135, baseHp: 550, gold: 4500 },
+            { id: 257, name: '레전더리 드래곤 프린스', sprite: '🐉', tier: 'legendary', baseAtk: 125, baseHp: 500, gold: 4250 },
+            { id: 258, name: '레전더리 드래곤 프린세스', sprite: '🐉', tier: 'legendary', baseAtk: 123, baseHp: 510, gold: 4200 },
+            { id: 259, name: '레전더리 드래곤 나이트', sprite: '🐉', tier: 'legendary', baseAtk: 130, baseHp: 520, gold: 4300 },
+            { id: 260, name: '레전더리 드래곤 메이지', sprite: '🐉', tier: 'legendary', baseAtk: 140, baseHp: 480, gold: 4600 },
+            { id: 261, name: '레전더리 드래곤 팔라딘', sprite: '🐉', tier: 'legendary', baseAtk: 133, baseHp: 540, gold: 4400 },
+            { id: 262, name: '레전더리 드래곤 어쌔신', sprite: '🐉', tier: 'legendary', baseAtk: 145, baseHp: 460, gold: 4700 },
+            { id: 263, name: '레전더리 드래곤 비숍', sprite: '🐉', tier: 'legendary', baseAtk: 137, baseHp: 490, gold: 4500 },
+            { id: 264, name: '레전더리 드래곤 드루이드', sprite: '🐉', tier: 'legendary', baseAtk: 131, baseHp: 510, gold: 4300 },
+            { id: 265, name: '레전더리 드래곤 레인저', sprite: '🐉', tier: 'legendary', baseAtk: 135, baseHp: 470, gold: 4400 },
+            { id: 266, name: '크로노스 로드', sprite: '⏰', tier: 'legendary', baseAtk: 125, baseHp: 500, gold: 4250 },
+            { id: 267, name: '크로노스 프린스', sprite: '⏰', tier: 'legendary', baseAtk: 115, baseHp: 450, gold: 4000 },
+            { id: 268, name: '크로노스 프린세스', sprite: '⏰', tier: 'legendary', baseAtk: 113, baseHp: 460, gold: 3950 },
+            { id: 269, name: '크로노스 나이트', sprite: '⏰', tier: 'legendary', baseAtk: 120, baseHp: 470, gold: 4050 },
+            { id: 270, name: '크로노스 메이지', sprite: '⏰', tier: 'legendary', baseAtk: 130, baseHp: 430, gold: 4300 },
+            { id: 271, name: '크로노스 팔라딘', sprite: '⏰', tier: 'legendary', baseAtk: 123, baseHp: 490, gold: 4150 },
+            { id: 272, name: '크로노스 어쌔신', sprite: '⏰', tier: 'legendary', baseAtk: 135, baseHp: 410, gold: 4400 },
+            { id: 273, name: '크로노스 비숍', sprite: '⏰', tier: 'legendary', baseAtk: 127, baseHp: 440, gold: 4200 },
+            { id: 274, name: '크로노스 드루이드', sprite: '⏰', tier: 'legendary', baseAtk: 121, baseHp: 460, gold: 4050 },
+            { id: 275, name: '크로노스 레인저', sprite: '⏰', tier: 'legendary', baseAtk: 125, baseHp: 420, gold: 4100 },
+            { id: 276, name: '제우스 로드', sprite: '⚡', tier: 'legendary', baseAtk: 145, baseHp: 450, gold: 4750 },
+            { id: 277, name: '제우스 프린스', sprite: '⚡', tier: 'legendary', baseAtk: 135, baseHp: 400, gold: 4500 },
+            { id: 278, name: '제우스 프린세스', sprite: '⚡', tier: 'legendary', baseAtk: 133, baseHp: 410, gold: 4450 },
+            { id: 279, name: '제우스 나이트', sprite: '⚡', tier: 'legendary', baseAtk: 140, baseHp: 420, gold: 4550 },
+            { id: 280, name: '제우스 메이지', sprite: '⚡', tier: 'legendary', baseAtk: 150, baseHp: 380, gold: 4800 },
+
+            // Tier 6: 신화 (281-295)
+            { id: 281, name: '가이아', sprite: '🌍', tier: 'mythic', baseAtk: 150, baseHp: 800, gold: 7500 },
+            { id: 282, name: '우라노스', sprite: '🌌', tier: 'mythic', baseAtk: 160, baseHp: 700, gold: 8000 },
+            { id: 283, name: '타이탄', sprite: '🏔️', tier: 'mythic', baseAtk: 180, baseHp: 1000, gold: 10000 },
+            { id: 284, name: '프리모르디', sprite: '🔥', tier: 'mythic', baseAtk: 200, baseHp: 900, gold: 12500 },
+            { id: 285, name: '가이아 로드', sprite: '🌍', tier: 'mythic', baseAtk: 165, baseHp: 850, gold: 8000 },
+            { id: 286, name: '가이아 프린스', sprite: '🌍', tier: 'mythic', baseAtk: 155, baseHp: 800, gold: 7750 },
+            { id: 287, name: '가이아 프린세스', sprite: '🌍', tier: 'mythic', baseAtk: 153, baseHp: 810, gold: 7700 },
+            { id: 288, name: '가이아 나이트', sprite: '🌍', tier: 'mythic', baseAtk: 160, baseHp: 820, gold: 7800 },
+            { id: 289, name: '가이아 메이지', sprite: '🌍', tier: 'mythic', baseAtk: 170, baseHp: 780, gold: 8100 },
+            { id: 290, name: '가이아 팔라딘', sprite: '🌍', tier: 'mythic', baseAtk: 163, baseHp: 840, gold: 7900 },
+            { id: 291, name: '가이아 어쌔신', sprite: '🌍', tier: 'mythic', baseAtk: 175, baseHp: 760, gold: 8200 },
+            { id: 292, name: '가이아 비숍', sprite: '🌍', tier: 'mythic', baseAtk: 167, baseHp: 790, gold: 8000 },
+            { id: 293, name: '가이아 드루이드', sprite: '🌍', tier: 'mythic', baseAtk: 161, baseHp: 810, gold: 7800 },
+            { id: 294, name: '가이아 레인저', sprite: '🌍', tier: 'mythic', baseAtk: 165, baseHp: 770, gold: 7900 },
+            { id: 295, name: '우라노스 로드', sprite: '🌌', tier: 'mythic', baseAtk: 175, baseHp: 750, gold: 8500 },
+
+            // Tier 7: 신 (296-300)
+            { id: 296, name: '타이탄 로드', sprite: '🏔️', tier: 'divine', baseAtk: 195, baseHp: 1050, gold: 11000 },
+            { id: 297, name: '타이탄 프린스', sprite: '🏔️', tier: 'divine', baseAtk: 185, baseHp: 1000, gold: 10500 },
+            { id: 298, name: '타이탄 프린세스', sprite: '🏔️', tier: 'divine', baseAtk: 183, baseHp: 1010, gold: 10400 },
+            { id: 299, name: '프리모르디 로드', sprite: '🔥', tier: 'divine', baseAtk: 215, baseHp: 950, gold: 13000 },
+            { id: 300, name: '오메가 갓', sprite: '✨', tier: 'divine', baseAtk: 300, baseHp: 1500, gold: 25000 }
+        ];
+
+        const TIER_NAMES = { common: '커먼', uncommon: '언커먼', rare: '레어', epic: '에픽', legendary: '레전더리', mythic: '신화', divine: '신' };
+        const TIER_COLORS = { common: '#aaa', uncommon: '#7fff7f', rare: '#5cb3ff', epic: '#b35cff', legendary: '#ffb35c', mythic: '#ff5c5c', divine: '#ffd700' };
+
+        // ==================== GAME STATE ====================
+        let gameState = {
+            gold: 10000,
+            shields: 5,
+            shieldActive: false,
+            collection: {},
+            selectedMonster: 1,
+            totalEnhances: 0,
+            totalSuccess: 0,
+            totalFail: 0,
+            totalCriticals: 0,
+            autoBattle: false,
+            currentEnemy: null,
+            enemyHp: 0,
+            enemyMaxHp: 0,
+            battleTimer: null
+        };
+
+        // ==================== ENHANCEMENT SYSTEM ====================
+        function getSuccessRate(enhanceLevel) {
+            if (enhanceLevel >= 20) return 0;
+            const rates = [100, 95, 90, 85, 80, 75, 70, 65, 60, 55, 50, 45, 40, 35, 30, 25, 20, 15, 10, 5];
+            return rates[enhanceLevel] || 0;
+        }
+
+        function getCriticalRate(enhanceLevel) {
+            // 기본 10%, 레벨이 오를수록 감소
+            return Math.max(5, 15 - enhanceLevel * 0.5);
+        }
+
+        function getEnhanceCost(enhanceLevel) {
+            return Math.floor(100 * Math.pow(1.5, enhanceLevel));
+        }
+
+        function getMonsterStats(monsterId, enhanceLevel) {
+            const base = MONSTERS.find(m => m.id === monsterId);
+            const multiplier = 1 + enhanceLevel * 0.15;
+            return { atk: Math.floor(base.baseAtk * multiplier), hp: Math.floor(base.baseHp * multiplier), gold: Math.floor(base.gold * multiplier) };
+        }
+
+        function toggleShield() {
+            gameState.shieldActive = !gameState.shieldActive;
+            document.getElementById('shieldToggle').classList.toggle('active', gameState.shieldActive);
+            document.getElementById('shieldStatus').textContent = gameState.shieldActive ? 'ON' : 'OFF';
+            document.getElementById('shieldStatus').style.color = gameState.shieldActive ? '#3498db' : '#666';
+        }
+
+        function tryEnhance() {
+            const monster = gameState.collection[gameState.selectedMonster];
+            if (!monster) return;
+
+            const cost = getEnhanceCost(monster.enhanceLevel);
+            if (gameState.gold < cost) { addBattleMsg('골드가 부족합니다!', 'damage'); return; }
+
+            gameState.gold -= cost;
+            gameState.totalEnhances++;
+
+            const rate = getSuccessRate(monster.enhanceLevel);
+            const critRate = getCriticalRate(monster.enhanceLevel);
+            const roll = Math.random() * 100;
+            const critRoll = Math.random() * 100;
+            const isCritical = critRoll < critRate;
+            const success = roll < rate;
+            const increase = isCritical ? 2 : 1;
+
+            const sprite = document.getElementById('monsterSprite');
+            sprite.classList.add('enhancing');
+
+            setTimeout(() => {
+                sprite.classList.remove('enhancing');
+
+                if (success) {
+                    monster.enhanceLevel += increase;
+                    gameState.totalSuccess++;
+                    if (isCritical) {
+                        gameState.totalCriticals++;
+                        sprite.classList.add('success');
+                        showEnhanceResult(true, monster.enhanceLevel, true);
+                        addBattleMsg(`크리티컬! 강화 성공! +${monster.enhanceLevel} (${increase}배)`, 'critical');
+                    } else {
+                        sprite.classList.add('success');
+                        showEnhanceResult(true, monster.enhanceLevel, false);
+                        addBattleMsg(`강화 성공! +${monster.enhanceLevel}`, 'heal');
+                    }
+                    createSparkles();
+
+                    // 강화 보상: 새 몬스터 획득
+                    if (monster.enhanceLevel % 3 === 0) {
+                        grantRandomMonster(monster.enhanceLevel);
+                    }
+                    // 깨짐방지권 보상
+                    if (monster.enhanceLevel % 5 === 0) {
+                        gameState.shields++;
+                        addBattleMsg(`깨짐방지권 +1 획득!`, 'reward');
+                    }
+                } else {
+                    // 깨짐방지권 사용
+                    if (gameState.shieldActive && gameState.shields > 0) {
+                        gameState.shields--;
+                        addBattleMsg(`깨짐방지권 사용! 레벨 유지`, 'reward');
+                    } else {
+                        gameState.totalFail++;
+                        sprite.classList.add('fail');
+                        showEnhanceResult(false, monster.enhanceLevel, false);
+                        addBattleMsg(`강화 실패... (+${monster.enhanceLevel} 유지)`, 'damage');
+                    }
+                }
+
+                setTimeout(() => { sprite.classList.remove('success', 'fail'); }, 600);
+                updateUI();
+                saveGame();
+            }, 500);
+
+            updateUI();
+        }
+
+        function forceEnhance() {
+            const monster = gameState.collection[gameState.selectedMonster];
+            if (!monster) return;
+
+            const cost = getEnhanceCost(monster.enhanceLevel) * 3;
+            if (gameState.gold < cost) { addBattleMsg('골드가 부족합니다!', 'damage'); return; }
+
+            gameState.gold -= cost;
+            gameState.totalEnhances++;
+
+            const rate = getSuccessRate(monster.enhanceLevel) * 0.5;
+            const critRate = getCriticalRate(monster.enhanceLevel) * 0.5;
+            const roll = Math.random() * 100;
+            const critRoll = Math.random() * 100;
+            const isCritical = critRoll < critRate;
+            const success = roll < rate;
+            const increase = isCritical ? 2 : 1;
+
+            const sprite = document.getElementById('monsterSprite');
+            sprite.classList.add('enhancing');
+
+            setTimeout(() => {
+                sprite.classList.remove('enhancing');
+
+                if (success) {
+                    monster.enhanceLevel += increase;
+                    gameState.totalSuccess++;
+                    if (isCritical) {
+                        gameState.totalCriticals++;
+                        sprite.classList.add('success');
+                        showEnhanceResult(true, monster.enhanceLevel, true);
+                        addBattleMsg(`크리티컬! 강제 강화 성공! +${monster.enhanceLevel} (${increase}배)`, 'critical');
+                    } else {
+                        sprite.classList.add('success');
+                        showEnhanceResult(true, monster.enhanceLevel, false);
+                        addBattleMsg(`강제 강화 성공! +${monster.enhanceLevel}`, 'heal');
+                    }
+                    createSparkles();
+
+                    if (monster.enhanceLevel % 3 === 0) grantRandomMonster(monster.enhanceLevel);
+                    if (monster.enhanceLevel % 5 === 0) { gameState.shields++; addBattleMsg(`깨짐방지권 +1 획득!`, 'reward'); }
+                } else {
+                    // 깨짐방지권 사용
+                    if (gameState.shieldActive && gameState.shields > 0) {
+                        gameState.shields--;
+                        addBattleMsg(`깨짐방지권 사용! 레벨 유지`, 'reward');
+                    } else if (Math.random() < 0.3 && monster.enhanceLevel > 0) {
+                        monster.enhanceLevel = Math.max(0, monster.enhanceLevel - 2);
+                        addBattleMsg(`강제 강화 실패! 강화 레벨 하락...`, 'damage');
+                    } else {
+                        addBattleMsg(`강제 강화 실패...`, 'damage');
+                    }
+                    gameState.totalFail++;
+                    sprite.classList.add('fail');
+                    showEnhanceResult(false, monster.enhanceLevel, false);
+                }
+
+                setTimeout(() => { sprite.classList.remove('success', 'fail'); }, 600);
+                updateUI();
+                saveGame();
+            }, 500);
+
+            updateUI();
+        }
+
+        function grantRandomMonster(enhanceLevel) {
+            const owned = Object.keys(gameState.collection).map(Number);
+            const unowned = MONSTERS.filter(m => !owned.includes(m.id));
+
+            if (unowned.length === 0) {
+                const goldReward = enhanceLevel * 1000;
+                gameState.gold += goldReward;
+                addBattleMsg(`모든 몬스터 보유! 골드 +${goldReward}`, 'gold');
+                return;
+            }
+
+            let tier;
+            if (enhanceLevel >= 15) tier = ['rare', 'epic', 'legendary', 'mythic', 'divine'];
+            else if (enhanceLevel >= 10) tier = ['uncommon', 'rare', 'epic', 'legendary'];
+            else if (enhanceLevel >= 6) tier = ['common', 'uncommon', 'rare', 'epic'];
+            else tier = ['common', 'uncommon', 'rare'];
+
+            const candidates = unowned.filter(m => tier.includes(m.tier));
+            const pool = candidates.length > 0 ? candidates : unowned;
+            const monster = pool[Math.floor(Math.random() * pool.length)];
+
+            gameState.collection[monster.id] = { level: 1, enhanceLevel: 0 };
+            showRewardPopup(monster);
+            addBattleMsg(`새 몬스터 획득: ${monster.name}!`, 'reward');
+        }
+
+        function showRewardPopup(monster) {
+            document.getElementById('rewardSprite').textContent = monster.sprite;
+            document.getElementById('rewardName').textContent = monster.name;
+            const tierEl = document.getElementById('rewardTier');
+            tierEl.textContent = TIER_NAMES[monster.tier];
+            tierEl.style.color = TIER_COLORS[monster.tier];
+            document.getElementById('rewardPopup').classList.add('show');
+        }
+
+        function closeRewardPopup() {
+            document.getElementById('rewardPopup').classList.remove('show');
+        }
+
+        function showEnhanceResult(success, level, isCritical) {
+            const result = document.createElement('div');
+            result.className = `enhance-result ${success ? (isCritical ? 'critical' : 'success') : 'fail'}`;
+            result.textContent = success ? (isCritical ? `크리티컬! +${level}` : `성공! +${level}`) : '실패...';
+            document.body.appendChild(result);
+            setTimeout(() => result.remove(), 1500);
+        }
+
+        function createSparkles() {
+            const display = document.querySelector('.monster-display');
+            for (let i = 0; i < 20; i++) {
+                const sparkle = document.createElement('div');
+                sparkle.className = 'sparkle';
+                sparkle.innerHTML = ['✨', '⭐', '💫', '🌟'][Math.floor(Math.random() * 4)];
+                sparkle.style.left = '50%';
+                sparkle.style.top = '50%';
+                sparkle.style.fontSize = '1.5rem';
+                sparkle.style.setProperty('--tx', `${(Math.random() - 0.5) * 300}px`);
+                sparkle.style.setProperty('--ty', `${(Math.random() - 0.5) * 300}px`);
+                display.appendChild(sparkle);
+                setTimeout(() => sparkle.remove(), 1000);
+            }
+        }
+
+        // ==================== GACHA SYSTEM ====================
+        function pullGacha() {
+            if (gameState.gold < 500) { addBattleMsg('골드가 부족합니다! (500 필요)', 'damage'); return; }
+
+            gameState.gold -= 500;
+
+            const roll = Math.random() * 100;
+            let tier;
+            if (roll < 40) tier = 'common';
+            else if (roll < 65) tier = 'uncommon';
+            else if (roll < 82) tier = 'rare';
+            else if (roll < 93) tier = 'epic';
+            else if (roll < 98) tier = 'legendary';
+            else if (roll < 99.5) tier = 'mythic';
+            else tier = 'divine';
+
+            const tierMonsters = MONSTERS.filter(m => m.tier === tier);
+            const monster = tierMonsters[Math.floor(Math.random() * tierMonsters.length)];
+
+            if (!gameState.collection[monster.id]) {
+                gameState.collection[monster.id] = { level: 1, enhanceLevel: 0 };
+            }
+
+            const result = document.getElementById('gachaResult');
+            document.getElementById('gachaMonsterSprite').textContent = monster.sprite;
+            document.getElementById('gachaMonsterName').textContent = monster.name;
+            const tierEl = document.getElementById('gachaMonsterTier');
+            tierEl.textContent = TIER_NAMES[monster.tier];
+            tierEl.style.color = TIER_COLORS[monster.tier];
+            result.classList.add('show');
+
+            addBattleMsg(`[${TIER_NAMES[monster.tier]}] ${monster.name} 획득!`, 'gold');
+            gameState.selectedMonster = monster.id;
+
+            updateUI();
+            saveGame();
+        }
+
+        // ==================== BATTLE SYSTEM ====================
+        function toggleAutoBattle() {
+            gameState.autoBattle = !gameState.autoBattle;
+            document.getElementById('autoBattleToggle').classList.toggle('active', gameState.autoBattle);
+            document.getElementById('autoBattleStatus').textContent = gameState.autoBattle ? 'ON' : 'OFF';
+            document.getElementById('autoBattleStatus').style.color = gameState.autoBattle ? '#27ae60' : '#666';
+
+            if (gameState.autoBattle) startBattle();
+            else stopBattle();
+        }
+
+        function startBattle() {
+            if (gameState.battleTimer) return;
+            spawnEnemy();
+            gameState.battleTimer = setInterval(battleTick, 1000);
+        }
+
+        function stopBattle() {
+            if (gameState.battleTimer) { clearInterval(gameState.battleTimer); gameState.battleTimer = null; }
+        }
+
+        function spawnEnemy() {
+            const enemyTier = Math.min(Math.floor(Math.random() * 5) + 1, 6);
+            const tiers = ['common', 'uncommon', 'rare', 'epic', 'legendary', 'mythic'];
+            const tierMonsters = MONSTERS.filter(m => m.tier === tiers[enemyTier - 1]);
+            const enemy = tierMonsters[Math.floor(Math.random() * tierMonsters.length)];
+
+            const scaleFactor = 0.8 + Math.random() * 0.4;
+            gameState.currentEnemy = enemy;
+            gameState.enemyMaxHp = Math.floor(enemy.baseHp * scaleFactor);
+            gameState.enemyHp = gameState.enemyMaxHp;
+
+            document.getElementById('enemyBattleSprite').textContent = enemy.sprite;
+            document.getElementById('enemyBattleName').textContent = enemy.name;
+            updateBattleUI();
+        }
+
+        function battleTick() {
+            if (!gameState.autoBattle || !gameState.currentEnemy) return;
+
+            const monster = gameState.collection[gameState.selectedMonster];
+            const playerStats = getMonsterStats(gameState.selectedMonster, monster?.enhanceLevel || 0);
+            const enemy = gameState.currentEnemy;
+
+            const playerDmg = Math.floor(playerStats.atk * (0.8 + Math.random() * 0.4));
+            gameState.enemyHp -= playerDmg;
+
+            const playerSprite = document.getElementById('playerBattleSprite');
+            const enemySprite = document.getElementById('enemyBattleSprite');
+            playerSprite.classList.add('attacking');
+            enemySprite.classList.add('hit');
+            setTimeout(() => { playerSprite.classList.remove('attacking'); enemySprite.classList.remove('hit'); }, 300);
+
+            addBattleMsg(`${playerDmg} 피해!`, 'damage');
+
+            if (gameState.enemyHp <= 0) {
+                const goldReward = Math.floor(enemy.baseHp * (2 + Math.random() * 2));
+                gameState.gold += goldReward;
+                addBattleMsg(`승리! +${goldReward} 골드`, 'gold');
+
+                // 깨짐방지권 드롭
+                if (Math.random() < 0.08) {
+                    gameState.shields++;
+                    addBattleMsg(`깨짐방지권 +1 획득!`, 'reward');
+                }
+
+                spawnEnemy();
+                updateUI();
+                return;
+            }
+
+            const enemyDmg = Math.floor(enemy.baseAtk * (0.8 + Math.random() * 0.4) * 0.5);
+            addBattleMsg(`적의 반격! ${enemyDmg} 피해`, 'damage');
+
+            updateBattleUI();
+        }
+
+        function updateBattleUI() {
+            const monster = gameState.collection[gameState.selectedMonster];
+            document.getElementById('playerBattleSprite').textContent = MONSTERS.find(m => m.id === gameState.selectedMonster).sprite;
+            document.getElementById('playerBattleName').textContent = `${MONSTERS.find(m => m.id === gameState.selectedMonster).name} +${monster?.enhanceLevel || 0}`;
+            document.getElementById('playerHpBar').style.width = '100%';
+            if (gameState.currentEnemy) {
+                document.getElementById('enemyHpBar').style.width = `${(gameState.enemyHp / gameState.enemyMaxHp) * 100}%`;
+            }
+        }
+
+        function addBattleMsg(text, type) {
+            const log = document.getElementById('battleLog');
+            const div = document.createElement('div');
+            div.className = `battle-msg ${type}`;
+            div.textContent = text;
+            log.appendChild(div);
+            log.scrollTop = log.scrollHeight;
+            while (log.children.length > 30) log.removeChild(log.firstChild);
+        }
+
+        // ==================== UI UPDATE ====================
+        function updateUI() {
+            const monster = gameState.collection[gameState.selectedMonster];
+            const base = MONSTERS.find(m => m.id === gameState.selectedMonster);
+            const enhanceLevel = monster?.enhanceLevel || 0;
+            const stats = getMonsterStats(gameState.selectedMonster, enhanceLevel);
+
+            document.getElementById('goldDisplay').textContent = formatNumber(gameState.gold);
+            document.getElementById('shieldCount').textContent = gameState.shields;
+            document.getElementById('shieldInventory').textContent = gameState.shields;
+            document.getElementById('totalEnhanceDisplay').textContent = gameState.totalEnhances;
+
+            document.getElementById('monsterSprite').textContent = base.sprite;
+            document.getElementById('enhanceLevel').textContent = enhanceLevel;
+            document.getElementById('monsterName').textContent = base.name;
+
+            const tierEl = document.getElementById('monsterTier');
+            tierEl.textContent = TIER_NAMES[base.tier];
+            tierEl.className = `monster-tier tier-${base.tier}`;
+            tierEl.style.color = TIER_COLORS[base.tier];
+
+            const rate = getSuccessRate(enhanceLevel);
+            document.getElementById('successRateText').textContent = `${rate}%`;
+            document.getElementById('rateText').textContent = `${rate}%`;
+            const rateBar = document.getElementById('successRateBar');
+            rateBar.style.width = `${rate}%`;
+            if (rate >= 70) rateBar.style.background = 'linear-gradient(90deg, #27ae60, #2ecc71)';
+            else if (rate >= 40) rateBar.style.background = 'linear-gradient(90deg, #f39c12, #e67e22)';
+            else rateBar.style.background = 'linear-gradient(90deg, #e74c3c, #c0392b)';
+
+            const critRate = getCriticalRate(enhanceLevel);
+            document.getElementById('criticalRateText').textContent = `${critRate.toFixed(1)}%`;
+
+            document.getElementById('enhanceCost').textContent = formatNumber(getEnhanceCost(enhanceLevel));
+            document.getElementById('atkValue').textContent = formatNumber(stats.atk);
+            document.getElementById('hpValue').textContent = formatNumber(stats.hp);
+
+            const owned = Object.keys(gameState.collection).length;
+            document.getElementById('collectionCount').textContent = `${owned}/300`;
+            document.getElementById('collectionText').textContent = `${owned}/300`;
+
+            updateMonsterGrid();
+            updateBattleUI();
+        }
+
+        function updateMonsterGrid(filter = 'all') {
+            const grid = document.getElementById('monsterGrid');
+            grid.innerHTML = '';
+            const monsters = MONSTERS.filter(m => filter === 'owned' ? gameState.collection[m.id] : true);
+
+            for (const monster of monsters) {
+                const owned = gameState.collection[monster.id];
+                const card = document.createElement('div');
+                card.className = `monster-card ${owned ? '' : 'locked'} ${gameState.selectedMonster === monster.id ? 'selected' : ''}`;
+                const cardLevel = owned ? `<span class="card-level">+${owned.enhanceLevel}</span>` : '';
+                const tierColor = TIER_COLORS[monster.tier];
+                card.innerHTML = `${cardLevel}<span class="card-sprite">${owned ? monster.sprite : '❓'}</span><div class="card-tier" style="background: ${tierColor};"></div>`;
+                card.onclick = () => { if (owned) { gameState.selectedMonster = monster.id; updateUI(); } };
+                grid.appendChild(card);
+            }
+        }
+
+        function switchTab(tab, btn) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            updateMonsterGrid(tab);
+        }
+
+        function formatNumber(num) {
+            if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+            if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+            return num.toString();
+        }
+
+        // ==================== SAVE/LOAD ====================
+        function saveGame() {
+            localStorage.setItem('monsterEnhanceSave', JSON.stringify(gameState));
+            const indicator = document.getElementById('saveIndicator');
+            indicator.classList.add('show');
+            setTimeout(() => indicator.classList.remove('show'), 1500);
+        }
+
+        function loadGame() {
+            const save = localStorage.getItem('monsterEnhanceSave');
+            if (save) {
+                try { gameState = { ...gameState, ...JSON.parse(save) }; } catch (e) { console.error('Save load failed:', e); }
+            }
+            if (Object.keys(gameState.collection).length === 0) {
+                gameState.collection[1] = { level: 1, enhanceLevel: 0 };
+                gameState.collection[2] = { level: 1, enhanceLevel: 0 };
+                gameState.collection[3] = { level: 1, enhanceLevel: 0 };
+            }
+        }
+
+        // ==================== INIT ====================
+        loadGame();
+        updateUI();
+        setInterval(saveGame, 30000);
+    </script>
+</body>
+</html>
